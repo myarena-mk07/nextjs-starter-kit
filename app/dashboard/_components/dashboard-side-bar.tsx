@@ -11,9 +11,32 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { FaTasks } from 'react-icons/fa'
+import { useState} from 'react';
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { ColorPicker } from "@/components/ui/color-picker";
 
-export default function DashboardSideBar() {
-  const pathname = usePathname();
+// export default function DashboardSideBar() {
+//   const pathname = usePathname();
+//   const [suggestedColors, setSuggestedColors] = useState<string[]>([]);
+
+export default function Dashboard() {
+  const [backgroundColor, setBackgroundColor] = useState('#FF0000')
+  const [backgroundOpacity, setBackgroundOpacity] = useState(100)
+  const [suggestedColors, setSuggestedColors] = useState<string[]>([])
+
+  // useEffect(() => {
+  //   if (imageData) {
+      // Function to extract colors from the image
+      const extractColors = async () => {
+        // Implement color extraction logic here
+        // This is a placeholder, you'll need to implement the actual color extraction
+        const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF'];
+        setSuggestedColors(colors);
+      };
+      extractColors();
+    }
+  // }, [imageData]);
 
   return (
     <div className="lg:block hidden border-r h-full">
