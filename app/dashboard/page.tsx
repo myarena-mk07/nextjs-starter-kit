@@ -94,6 +94,49 @@ const ImagePreview = ({ image, containerRef, backgroundSettings, imageSettings, 
 };
 
 // Helper function to apply image effects
+// const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number, image: HTMLImageElement, backgroundSettings: any, imageSettings: any, shadowSettings: any) => {
+//   // Clear the canvas
+//   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+//   const imageAspectRatio = image.width / image.height;
+//   const canvasAspectRatio = canvasWidth / canvasHeight;
+
+//   // Calculate the maximum size the image can be while maintaining its aspect ratio
+//   let imageDrawWidth, imageDrawHeight;
+//   if (imageAspectRatio > canvasAspectRatio) {
+//     imageDrawWidth = canvasWidth;
+//     imageDrawHeight = imageDrawWidth / imageAspectRatio;
+//   } else {
+//     imageDrawHeight = canvasHeight;
+//     imageDrawWidth = imageDrawHeight * imageAspectRatio;
+//   }
+
+//   // Calculate padding
+//   const paddingFactor = imageSettings.padding / 100;
+//   const minImageDimension = Math.min(imageDrawWidth, imageDrawHeight);
+//   const maxPadding = minImageDimension * 0.25; // Max padding is 25% of the smaller image dimension
+//   const actualPadding = maxPadding * paddingFactor;
+
+//   // Apply padding
+//   imageDrawWidth -= 2 * actualPadding;
+//   imageDrawHeight -= 2 * actualPadding;
+
+//   // Calculate background size (image size + padding)
+//   const backgroundWidth = imageDrawWidth + 2 * actualPadding;
+//   const backgroundHeight = imageDrawHeight + 2 * actualPadding;
+
+//   // Center the background and image
+//   const backgroundX = (canvasWidth - backgroundWidth) / 2;
+//   const backgroundY = (canvasHeight - backgroundHeight) / 2;
+//   const imageX = backgroundX + actualPadding + (imageSettings.offsetX / 100) * imageDrawWidth;
+//   const imageY = backgroundY + actualPadding + (imageSettings.offsetY / 100) * imageDrawHeight;
+
+//   // Draw background
+//   ctx.fillStyle = backgroundSettings.color + Math.round(backgroundSettings.opacity * 2.55).toString(16).padStart(2, '0');
+//   ctx.beginPath();
+//   ctx.roundRect(backgroundX, backgroundY, backgroundWidth, backgroundHeight, (backgroundSettings.cornerRadius / 100) * Math.min(backgroundWidth, backgroundHeight));
+//   ctx.fill();
+
 const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number, image: HTMLImageElement, backgroundSettings: any, imageSettings: any, shadowSettings: any) => {
   // Clear the canvas
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -114,7 +157,7 @@ const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, c
   // Calculate padding
   const paddingFactor = imageSettings.padding / 100;
   const minImageDimension = Math.min(imageDrawWidth, imageDrawHeight);
-  const maxPadding = minImageDimension * 0.25; // Max padding is 25% of the smaller image dimension
+  const maxPadding = minImageDimension * 0.25;
   const actualPadding = maxPadding * paddingFactor;
 
   // Apply padding
@@ -132,10 +175,24 @@ const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, c
   const imageY = backgroundY + actualPadding + (imageSettings.offsetY / 100) * imageDrawHeight;
 
   // Draw background
-  ctx.fillStyle = backgroundSettings.color + Math.round(backgroundSettings.opacity * 2.55).toString(16).padStart(2, '0');
+  const gradient = ctx.createLinearGradient(backgroundX, backgroundY, backgroundX + backgroundWidth, backgroundY);
+  if (backgroundSettings.color.includes('linear-gradient')) {
+    const colors = backgroundSettings.color.match(/#[a-f\d]{6}/gi);
+    if (colors && colors.length >= 2) {
+      gradient.addColorStop(0, colors[0]);
+      gradient.addColorStop(1, colors[1]);
+    }
+  } else {
+    gradient.addColorStop(0, backgroundSettings.color);
+    gradient.addColorStop(1, backgroundSettings.color);
+  }
+  
+  ctx.fillStyle = gradient;
+  ctx.globalAlpha = backgroundSettings.opacity / 100;
   ctx.beginPath();
   ctx.roundRect(backgroundX, backgroundY, backgroundWidth, backgroundHeight, (backgroundSettings.cornerRadius / 100) * Math.min(backgroundWidth, backgroundHeight));
   ctx.fill();
+  ctx.globalAlpha = 1;
 
   // Create a temporary canvas for the image and shadow
   const tempCanvas = document.createElement('canvas');
@@ -174,7 +231,8 @@ const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, c
 };
 
 export default function Dashboard() {
-  const [backgroundColor, setBackgroundColor] = useState('#FF0000')
+  // const [backgroundColor, setBackgroundColor] = useState('#FF0000')
+  const [backgroundColor, setBackgroundColor] = useState('linear-gradient(to left, #c6ffb1, #b4eef5)');
   const [backgroundOpacity, setBackgroundOpacity] = useState(100)
   const [shadowOpacity, setShadowOpacity] = useState(60)
   const [shadowBlur, setShadowBlur] = useState(10) // Now a percentage of image size
@@ -234,13 +292,31 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', updateContainerSize)
   }, [])
 
+  // useEffect(() => {
+  //   if (imageObject) {
+  //     // This is a placeholder. You'll need to implement actual color extraction logic
+  //     const extractColors = async () => {
+  //       // Implement color extraction here
+  //       const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF'];
+  //       setSuggestedColors(colors);
+  //     };
+  //     extractColors();
+  //   }
+  // }, [imageObject]);
+
   useEffect(() => {
     if (imageObject) {
       // This is a placeholder. You'll need to implement actual color extraction logic
       const extractColors = async () => {
-        // Implement color extraction here
-        const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF'];
-        setSuggestedColors(colors);
+        // Instead of extracting colors, we're now using predefined linear gradients
+        const gradients = [
+          'linear-gradient(to left, #f2b8ff, #e9e4fe)',
+          'linear-gradient(to left, #c6ffb1, #b4eef5)',
+          'linear-gradient(to left, #3de5b3, #fee899)',
+          'linear-gradient(to left, #fda1ff, #fed3d3)',
+          'linear-gradient(to left, #fff2a4, #d3acee)',
+        ];
+        setSuggestedColors(gradients);
       };
       extractColors();
     }
@@ -257,7 +333,7 @@ export default function Dashboard() {
           setImageObject(img)
           setUploadedImage(img.src)
           // Apply default settings
-          setBackgroundColor('#FF0000')
+          setBackgroundColor('linear-gradient(to left, #c6ffb1, #b4eef5)')
           setBackgroundOpacity(100)
           setShadowOpacity(60)
           setShadowBlur(10)
@@ -322,7 +398,7 @@ export default function Dashboard() {
           <CardContent className='space-y-4 p-6'>
             <h2 className='text-xl font-bold mb-4'>Background</h2>
             <div className='flex items-center space-x-4 mb-4'>
-              <Popover>
+              {/* <Popover>
                 <PopoverTrigger asChild>
                   <div 
                     className='w-10 h-10 rounded-md cursor-pointer border border-gray-300' 
@@ -332,16 +408,49 @@ export default function Dashboard() {
                 <PopoverContent>
                   <ColorPicker color={backgroundColor} onChange={setBackgroundColor} />
                 </PopoverContent>
+              </Popover> */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div 
+                    className='w-10 h-10 rounded-md cursor-pointer border border-gray-300' 
+                    style={{ background: backgroundColor }}
+                  />
+                </PopoverTrigger>
+                <PopoverContent>
+                  <ColorPicker 
+                    color={backgroundColor} 
+                    onChange={(color) => {
+                      if (typeof color === 'string' && color.includes('linear-gradient')) {
+                        setBackgroundColor(color);
+                      } else {
+                        setBackgroundColor(`linear-gradient(to left, ${color}, ${color})`);
+                      }
+                    }} 
+                  />
+                </PopoverContent>
               </Popover>
+              {/* <div className='flex-1 space-y-2'>
+                <Label>Suggested Colors</Label>
+                <div className='flex space-x-2'>
+                {suggestedColors.map((gradient, index) => (
+                  <div
+                    key={index}
+                    className='w-6 h-6 rounded-full cursor-pointer border border-gray-300'
+                    style={{ background: gradient }}
+                    onClick={() => setBackgroundColor(gradient)}
+                  />
+                ))}
+                </div>
+              </div> */}
               <div className='flex-1 space-y-2'>
                 <Label>Suggested Colors</Label>
                 <div className='flex space-x-2'>
-                  {suggestedColors.map((color, index) => (
+                  {suggestedColors.map((gradient, index) => (
                     <div
                       key={index}
                       className='w-6 h-6 rounded-full cursor-pointer border border-gray-300'
-                      style={{ backgroundColor: color }}
-                      onClick={() => setBackgroundColor(color)}
+                      style={{ background: gradient }}
+                      onClick={() => setBackgroundColor(gradient)}
                     />
                   ))}
                 </div>
@@ -638,7 +747,7 @@ export default function Dashboard() {
             <CardContent className='space-y-4 p-6'>
               <h2 className='text-xl font-bold mb-4'>Background</h2>
               <div className='flex items-center space-x-4 mb-4'>
-                <Popover>
+                {/* <Popover>
                   <PopoverTrigger asChild>
                     <div 
                       className='w-10 h-10 rounded-md cursor-pointer border border-gray-300' 
@@ -648,16 +757,49 @@ export default function Dashboard() {
                   <PopoverContent>
                     <ColorPicker color={backgroundColor} onChange={setBackgroundColor} />
                   </PopoverContent>
+                </Popover> */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div 
+                      className='w-10 h-10 rounded-md cursor-pointer border border-gray-300' 
+                      style={{ background: backgroundColor }}
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent>
+                    <ColorPicker 
+                      color={backgroundColor} 
+                      onChange={(color) => {
+                        if (typeof color === 'string' && color.includes('linear-gradient')) {
+                          setBackgroundColor(color);
+                        } else {
+                          setBackgroundColor(`linear-gradient(to left, ${color}, ${color})`);
+                        }
+                      }} 
+                    />
+                  </PopoverContent>
                 </Popover>
+                {/* <div className='flex-1 space-y-2'>
+                  <Label>Suggested Colors</Label>
+                  <div className='flex space-x-2'>
+                  {suggestedColors.map((gradient, index) => (
+                    <div
+                      key={index}
+                      className='w-6 h-6 rounded-full cursor-pointer border border-gray-300'
+                      style={{ background: gradient }}
+                      onClick={() => setBackgroundColor(gradient)}
+                    />
+                  ))}
+                  </div>
+                </div> */}
                 <div className='flex-1 space-y-2'>
                   <Label>Suggested Colors</Label>
                   <div className='flex space-x-2'>
-                    {suggestedColors.map((color, index) => (
+                    {suggestedColors.map((gradient, index) => (
                       <div
                         key={index}
                         className='w-6 h-6 rounded-full cursor-pointer border border-gray-300'
-                        style={{ backgroundColor: color }}
-                        onClick={() => setBackgroundColor(color)}
+                        style={{ background: gradient }}
+                        onClick={() => setBackgroundColor(gradient)}
                       />
                     ))}
                   </div>
