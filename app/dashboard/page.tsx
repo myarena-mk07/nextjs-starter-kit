@@ -8,15 +8,15 @@ import { Button } from '@/components/ui/button'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { useDropzone } from 'react-dropzone'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ChevronDown, ChevronUp, Download, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, RefreshCw, Edit2 } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from '@/hooks/use-media-query'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Add this new type
-type BackgroundType = 'gradient' | 'image';
+// Update the BackgroundType
+type BackgroundType = 'gradient' | 'image' | 'custom';
 
 const ImagePreview = ({ image, containerRef, backgroundSettings, imageSettings, shadowSettings, previewSize, onDownloadableCanvasReady }: {
   image: HTMLImageElement;
@@ -25,6 +25,7 @@ const ImagePreview = ({ image, containerRef, backgroundSettings, imageSettings, 
     type: BackgroundType;
     color: string;
     image: string | null;
+    customImage: string | null;
     opacity: number;
     cornerRadius: number;
   };
@@ -92,7 +93,33 @@ const ImagePreview = ({ image, containerRef, backgroundSettings, imageSettings, 
   );
 };
 
-const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number, image: HTMLImageElement, backgroundSettings: any, imageSettings: any, shadowSettings: any) => {
+const applyImageEffects = (
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  image: HTMLImageElement,
+  backgroundSettings: {
+    type: BackgroundType;
+    color: string;
+    image: string | null;
+    customImage: string | null;
+    opacity: number;
+    cornerRadius: number;
+  },
+  imageSettings: {
+    cornerRadius: number;
+    offsetX: number;
+    offsetY: number;
+    padding: number;
+  },
+  shadowSettings: {
+    color: string;
+    opacity: number;
+    blur: number;
+    distance: number;
+  }
+) => {
+  // Implementation of applyImageEffects
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
   const imageAspectRatio = image.width / image.height;
@@ -152,6 +179,14 @@ const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, c
       drawMainImage();
     };
     return; // Exit the function early, the rest will be handled in the onload callback
+  } else if (backgroundSettings.type === 'custom' && backgroundSettings.customImage) {
+    const bgImage = document.createElement('img');
+    bgImage.src = backgroundSettings.customImage;
+    bgImage.onload = () => {
+      ctx.drawImage(bgImage, backgroundX, backgroundY, backgroundWidth, backgroundHeight);
+      drawMainImage();
+    };
+    return; // Exit the function early, the rest will be handled in the onload callback
   }
   ctx.restore();
 
@@ -189,23 +224,27 @@ const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, c
   }
 
   // If it's not an image background, draw the main image immediately
-  if (backgroundSettings.type !== 'image') {
+  if (backgroundSettings.type !== 'image' && backgroundSettings.type !== 'custom') {
     drawMainImage();
   }
 };
 
-const BackgroundSelector = ({ type, color, image, onTypeChange, onColorChange, onImageChange, suggestedColors, suggestedImages }: {
+const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onColorChange, onImageChange, onCustomImageChange, suggestedColors, suggestedImages, isOriginalImageUploaded }: {
   type: BackgroundType;
   color: string;
   image: string | null;
+  customImage: string | null;
   onTypeChange: (type: BackgroundType) => void;
   onColorChange: (color: string) => void;
   onImageChange: (image: string) => void;
+  onCustomImageChange: (image: string | null) => void;
   suggestedColors: string[];
   suggestedImages: string[];
+  isOriginalImageUploaded: boolean;
 }) => {
   const [isGradientOpen, setIsGradientOpen] = useState(false);
   const [isImageOpen, setIsImageOpen] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   const handleGradientSelect = (gradient: string) => {
     onTypeChange('gradient');
@@ -217,6 +256,27 @@ const BackgroundSelector = ({ type, color, image, onTypeChange, onColorChange, o
     onTypeChange('image');
     onImageChange(img);
     setIsImageOpen(false);
+  };
+
+  const handleCustomImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        onTypeChange('custom');
+        onCustomImageChange(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveCustomImage = () => {
+    onCustomImageChange(null);
+    if (type === 'custom') {
+      onTypeChange('gradient');
+      onColorChange(suggestedColors[0]); // Set to the first suggested color
+    }
   };
 
   return (
@@ -291,6 +351,44 @@ const BackgroundSelector = ({ type, color, image, onTypeChange, onColorChange, o
           )}
         </AnimatePresence>
       </Popover>
+      <div 
+        className={`w-20 h-20 rounded-md cursor-pointer border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative ${!isOriginalImageUploaded ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        {customImage ? (
+          <>
+            <div
+              className="w-full h-full bg-center bg-no-repeat bg-cover"
+              style={{ backgroundImage: `url(${customImage})` }}
+              onClick={() => isOriginalImageUploaded && onTypeChange('custom')}
+            />
+            {isHovering && (
+              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <button
+                  className="text-white hover:text-red-500 transition-colors duration-200"
+                  onClick={handleRemoveCustomImage}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <label className={`cursor-pointer text-center text-xs p-2 ${!isOriginalImageUploaded ? 'cursor-not-allowed' : ''}`}>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCustomImageUpload}
+              disabled={!isOriginalImageUploaded}
+            />
+            Upload Custom Background Image
+          </label>
+        )}
+      </div>
     </div>
   );
 };
@@ -338,6 +436,7 @@ export default function Dashboard() {
 
   const [backgroundType, setBackgroundType] = useState<BackgroundType>('gradient');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const [customBackgroundImage, setCustomBackgroundImage] = useState<string | null>(null);
   const [suggestedImages, setSuggestedImages] = useState<string[]>([
     'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
     'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
@@ -354,6 +453,8 @@ export default function Dashboard() {
     'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
     'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
   ]);
+
+  const [isOriginalImageUploaded, setIsOriginalImageUploaded] = useState(false);
 
   useEffect(() => {
     const updateMobilePreviewSize = () => {
@@ -431,6 +532,7 @@ export default function Dashboard() {
           setImagePadding(30)
           setBackgroundCornerRadius(5)
           setImageCornerRadius(5)
+          setIsOriginalImageUploaded(true);
         }
         img.src = e.target?.result as string
       }
@@ -475,7 +577,51 @@ export default function Dashboard() {
     setImagePadding(30)
     setHorizontalOffset(0)
     setVerticalOffset(0)
+    setIsOriginalImageUploaded(false);
+    setCustomBackgroundImage(null);
   }
+
+  const handleCustomBackgroundChange = (newCustomImage: string | null) => {
+    setCustomBackgroundImage(newCustomImage);
+    if (newCustomImage) {
+      setBackgroundType('custom');
+    } else if (backgroundType === 'custom') {
+      setBackgroundType('gradient');
+      setBackgroundColor(suggestedColors[0]); // Set to the first suggested color
+    }
+    // Update the background image immediately
+    if (imageObject && downloadableCanvas) {
+      const ctx = downloadableCanvas.getContext('2d');
+      if (ctx) {
+        applyImageEffects(
+          ctx,
+          downloadableCanvas.width,
+          downloadableCanvas.height,
+          imageObject,
+          {
+            type: newCustomImage ? 'custom' : 'gradient',
+            color: newCustomImage ? '' : suggestedColors[0],
+            image: backgroundImage,
+            customImage: newCustomImage,
+            opacity: backgroundOpacity,
+            cornerRadius: backgroundCornerRadius,
+          },
+          {
+            cornerRadius: imageCornerRadius,
+            offsetX: horizontalOffset,
+            offsetY: verticalOffset,
+            padding: imagePadding,
+          },
+          {
+            color: shadowColor,
+            opacity: shadowOpacity,
+            blur: shadowBlur,
+            distance: shadowDistance,
+          }
+        );
+      }
+    }
+  };
 
   return (
     <div className='flex flex-col md:flex-row h-[calc(100vh-4rem)]'>
@@ -487,11 +633,14 @@ export default function Dashboard() {
               type={backgroundType}
               color={backgroundColor}
               image={backgroundImage}
+              customImage={customBackgroundImage}
               onTypeChange={setBackgroundType}
               onColorChange={setBackgroundColor}
               onImageChange={setBackgroundImage}
+              onCustomImageChange={handleCustomBackgroundChange}
               suggestedColors={suggestedColors}
               suggestedImages={suggestedImages}
+              isOriginalImageUploaded={isOriginalImageUploaded}
             />
             <div className='flex space-x-4'>
               <div className='flex-1 space-y-2'>
@@ -664,6 +813,7 @@ export default function Dashboard() {
                   type: backgroundType,
                   color: backgroundColor,
                   image: backgroundImage,
+                  customImage: customBackgroundImage,
                   opacity: backgroundOpacity,
                   cornerRadius: backgroundCornerRadius,
                 }}
@@ -743,6 +893,7 @@ export default function Dashboard() {
                     type: backgroundType,
                     color: backgroundColor,
                     image: backgroundImage,
+                    customImage: customBackgroundImage,
                     opacity: backgroundOpacity,
                     cornerRadius: backgroundCornerRadius,
                   }}
@@ -791,11 +942,14 @@ export default function Dashboard() {
                 type={backgroundType}
                 color={backgroundColor}
                 image={backgroundImage}
+                customImage={customBackgroundImage}
                 onTypeChange={setBackgroundType}
                 onColorChange={setBackgroundColor}
                 onImageChange={setBackgroundImage}
+                onCustomImageChange={handleCustomBackgroundChange}
                 suggestedColors={suggestedColors}
                 suggestedImages={suggestedImages}
+                isOriginalImageUploaded={isOriginalImageUploaded}
               />
               <div className='flex space-x-4'>
                 <div className='flex-1 space-y-2'>
