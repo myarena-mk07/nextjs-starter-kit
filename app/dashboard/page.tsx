@@ -705,19 +705,26 @@ export default function Dashboard() {
           <Button 
             onClick={handleDownload} 
             disabled={!downloadableCanvas || !imageObject}
-            className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+            className="text-lg hover:shadow-md px-10 py-7 transition-all duration-300 transform hover:-translate-y-1"
           >
             <Download className="mr-2 h-5 w-5" /> Download
           </Button>
           <Button 
             onClick={handleReset}
-            className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+            className="text-lg hover:shadow-md px-10 py-7 transition-all duration-300 transform hover:-translate-y-1"
           >
             <RefreshCw className="mr-2 h-5 w-5" /> Reset
           </Button>
         </div>
-        <div className="text-center mt-2 text-sm text-gray-500">
-          Created by <a href="https://mitvaghani.com" target="_blank" rel="noopener noreferrer" className="text-black hover:underline">Mit Vaghani</a>
+        <div className="hidden md:block text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Created by <a 
+            href="https://mitvaghani.com" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-gray-700 dark:text-gray-300 hover:underline"
+          >
+            Mit Vaghani
+          </a>
         </div>
       </div>
 
@@ -947,6 +954,35 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Bottom 10% area for buttons and credit */}
+        <div className='h-[10%] p-4 flex flex-col items-center justify-center'>
+          <div className="flex justify-center space-x-4 mb-2">
+            <Button 
+              onClick={handleDownload} 
+              disabled={!downloadableCanvas || !imageObject}
+              className="text-sm px-10 py-1 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+            >
+              <Download className="mr-1 h-3 w-3" /> Download
+            </Button>
+            <Button 
+              onClick={handleReset}
+              className="text-sm px-10 py-1 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+            >
+              <RefreshCw className="mr-1 h-3 w-3" /> Reset
+            </Button>
+          </div>
+          <div className="md:hidden text-center text-[10px] text-gray-500 dark:text-gray-400">
+            Created by <a 
+              href="https://mitvaghani.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-gray-700 dark:text-gray-300 hover:underline"
+            >
+              Mit Vaghani
+            </a>
+          </div>
         </div>
       </div>
     </div>
