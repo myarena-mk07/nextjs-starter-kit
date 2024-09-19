@@ -12,12 +12,19 @@ import { ChevronDown, ChevronUp, Download, RefreshCw } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from '@/hooks/use-media-query'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion';
+
+// Add this new type
+type BackgroundType = 'gradient' | 'image';
 
 const ImagePreview = ({ image, containerRef, backgroundSettings, imageSettings, shadowSettings, previewSize, onDownloadableCanvasReady }: {
   image: HTMLImageElement;
   containerRef: React.RefObject<HTMLDivElement>;
   backgroundSettings: {
+    type: BackgroundType;
     color: string;
+    image: string | null;
     opacity: number;
     cornerRadius: number;
   };
@@ -91,7 +98,7 @@ const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, c
   const imageAspectRatio = image.width / image.height;
   const canvasAspectRatio = canvasWidth / canvasHeight;
 
-  let imageDrawWidth, imageDrawHeight;
+  let imageDrawWidth: number, imageDrawHeight: number;
   if (imageAspectRatio > canvasAspectRatio) {
     imageDrawWidth = canvasWidth;
     imageDrawHeight = imageDrawWidth / imageAspectRatio;
@@ -116,53 +123,176 @@ const applyImageEffects = (ctx: CanvasRenderingContext2D, canvasWidth: number, c
   const imageX = backgroundX + actualPadding + (imageSettings.offsetX / 100) * imageDrawWidth;
   const imageY = backgroundY + actualPadding + (imageSettings.offsetY / 100) * imageDrawHeight;
 
-  const gradient = ctx.createLinearGradient(backgroundX, backgroundY, backgroundX + backgroundWidth, backgroundY);
-  if (backgroundSettings.color.includes('linear-gradient')) {
-    const colors = backgroundSettings.color.match(/#[a-f\d]{6}/gi);
-    if (colors && colors.length >= 2) {
-      gradient.addColorStop(0, colors[0]);
-      gradient.addColorStop(1, colors[1]);
-    }
-  } else {
-    gradient.addColorStop(0, backgroundSettings.color);
-    gradient.addColorStop(1, backgroundSettings.color);
-  }
-  
-  ctx.fillStyle = gradient;
-  ctx.globalAlpha = backgroundSettings.opacity / 100;
+  // Apply background
+  ctx.save();
   ctx.beginPath();
   ctx.roundRect(backgroundX, backgroundY, backgroundWidth, backgroundHeight, (backgroundSettings.cornerRadius / 100) * Math.min(backgroundWidth, backgroundHeight));
-  ctx.fill();
-  ctx.globalAlpha = 1;
+  ctx.clip();
 
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = canvasWidth;
-  tempCanvas.height = canvasHeight;
-  const tempCtx = tempCanvas.getContext('2d');
-  if (!tempCtx) return;
+  ctx.globalAlpha = backgroundSettings.opacity / 100;
+  if (backgroundSettings.type === 'gradient') {
+    const gradient = ctx.createLinearGradient(backgroundX, backgroundY, backgroundX + backgroundWidth, backgroundY);
+    if (backgroundSettings.color.includes('linear-gradient')) {
+      const colors = backgroundSettings.color.match(/#[a-f\d]{6}/gi);
+      if (colors && colors.length >= 2) {
+        gradient.addColorStop(0, colors[0]);
+        gradient.addColorStop(1, colors[1]);
+      }
+    } else {
+      gradient.addColorStop(0, backgroundSettings.color);
+      gradient.addColorStop(1, backgroundSettings.color);
+    }
+    ctx.fillStyle = gradient;
+    ctx.fillRect(backgroundX, backgroundY, backgroundWidth, backgroundHeight);
+  } else if (backgroundSettings.type === 'image' && backgroundSettings.image) {
+    const bgImage = document.createElement('img');
+    bgImage.src = backgroundSettings.image;
+    bgImage.onload = () => {
+      ctx.drawImage(bgImage, backgroundX, backgroundY, backgroundWidth, backgroundHeight);
+      drawMainImage();
+    };
+    return; // Exit the function early, the rest will be handled in the onload callback
+  }
+  ctx.restore();
 
-  tempCtx.shadowColor = shadowSettings.color + Math.round(shadowSettings.opacity * 2.55).toString(16).padStart(2, '0');
-  tempCtx.shadowBlur = (shadowSettings.blur / 100) * Math.min(imageDrawWidth, imageDrawHeight);
-  tempCtx.shadowOffsetX = (shadowSettings.distance / 100) * imageDrawWidth;
-  tempCtx.shadowOffsetY = (shadowSettings.distance / 100) * imageDrawHeight;
+  // Function to draw the main image
+  function drawMainImage() {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvasWidth;
+    tempCanvas.height = canvasHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
 
-  tempCtx.beginPath();
-  tempCtx.roundRect(imageX, imageY, imageDrawWidth, imageDrawHeight, (imageSettings.cornerRadius / 100) * Math.min(imageDrawWidth, imageDrawHeight));
-  tempCtx.fill();
+    tempCtx.shadowColor = shadowSettings.color + Math.round(shadowSettings.opacity * 2.55).toString(16).padStart(2, '0');
+    tempCtx.shadowBlur = (shadowSettings.blur / 100) * Math.min(imageDrawWidth, imageDrawHeight);
+    tempCtx.shadowOffsetX = (shadowSettings.distance / 100) * imageDrawWidth;
+    tempCtx.shadowOffsetY = (shadowSettings.distance / 100) * imageDrawHeight;
 
-  tempCtx.shadowColor = 'transparent';
-  tempCtx.shadowBlur = 0;
-  tempCtx.shadowOffsetX = 0;
-  tempCtx.shadowOffsetY = 0;
+    tempCtx.beginPath();
+    tempCtx.roundRect(imageX, imageY, imageDrawWidth, imageDrawHeight, (imageSettings.cornerRadius / 100) * Math.min(imageDrawWidth, imageDrawHeight));
+    tempCtx.fill();
 
-  tempCtx.save();
-  tempCtx.beginPath();
-  tempCtx.roundRect(imageX, imageY, imageDrawWidth, imageDrawHeight, (imageSettings.cornerRadius / 100) * Math.min(imageDrawWidth, imageDrawHeight));
-  tempCtx.clip();
-  tempCtx.drawImage(image, 0, 0, image.width, image.height, imageX, imageY, imageDrawWidth, imageDrawHeight);
-  tempCtx.restore();
+    tempCtx.shadowColor = 'transparent';
+    tempCtx.shadowBlur = 0;
+    tempCtx.shadowOffsetX = 0;
+    tempCtx.shadowOffsetY = 0;
 
-  ctx.drawImage(tempCanvas, 0, 0);
+    tempCtx.save();
+    tempCtx.beginPath();
+    tempCtx.roundRect(imageX, imageY, imageDrawWidth, imageDrawHeight, (imageSettings.cornerRadius / 100) * Math.min(imageDrawWidth, imageDrawHeight));
+    tempCtx.clip();
+    tempCtx.drawImage(image, 0, 0, image.width, image.height, imageX, imageY, imageDrawWidth, imageDrawHeight);
+    tempCtx.restore();
+
+    ctx.globalAlpha = 1; // Ensure the main image is drawn at full opacity
+    ctx.drawImage(tempCanvas, 0, 0);
+  }
+
+  // If it's not an image background, draw the main image immediately
+  if (backgroundSettings.type !== 'image') {
+    drawMainImage();
+  }
+};
+
+const BackgroundSelector = ({ type, color, image, onTypeChange, onColorChange, onImageChange, suggestedColors, suggestedImages }: {
+  type: BackgroundType;
+  color: string;
+  image: string | null;
+  onTypeChange: (type: BackgroundType) => void;
+  onColorChange: (color: string) => void;
+  onImageChange: (image: string) => void;
+  suggestedColors: string[];
+  suggestedImages: string[];
+}) => {
+  const [isGradientOpen, setIsGradientOpen] = useState(false);
+  const [isImageOpen, setIsImageOpen] = useState(false);
+
+  const handleGradientSelect = (gradient: string) => {
+    onTypeChange('gradient');
+    onColorChange(gradient);
+    setIsGradientOpen(false);
+  };
+
+  const handleImageSelect = (img: string) => {
+    onTypeChange('image');
+    onImageChange(img);
+    setIsImageOpen(false);
+  };
+
+  return (
+    <div className="flex space-x-4">
+      <Popover open={isGradientOpen} onOpenChange={setIsGradientOpen}>
+        <PopoverTrigger asChild>
+          <div 
+            className='w-20 h-20 rounded-md cursor-pointer border border-gray-300' 
+            style={{ background: type === 'gradient' ? color : '#f0f0f0' }}
+          />
+        </PopoverTrigger>
+        <AnimatePresence>
+          {isGradientOpen && (
+            <PopoverContent forceMount asChild>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="w-64"
+              >
+                <div className="grid grid-cols-4 gap-2">
+                  {suggestedColors.map((gradient: string, index: number) => (
+                    <div
+                      key={`gradient-${index}`}
+                      className='w-full h-10 rounded-md cursor-pointer border border-gray-300'
+                      style={{ background: gradient }}
+                      onClick={() => handleGradientSelect(gradient)}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            </PopoverContent>
+          )}
+        </AnimatePresence>
+      </Popover>
+      <Popover open={isImageOpen} onOpenChange={setIsImageOpen}>
+        <PopoverTrigger asChild>
+          <div 
+            className='w-20 h-20 rounded-md cursor-pointer border border-gray-300 overflow-hidden' 
+          >
+            <div
+              className="w-full h-full bg-center bg-no-repeat bg-cover"
+              style={{ 
+                backgroundImage: `url(${type === 'image' && image ? image : suggestedImages[0]})`,
+              }}
+            />
+          </div>
+        </PopoverTrigger>
+        <AnimatePresence>
+          {isImageOpen && (
+            <PopoverContent forceMount asChild>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="w-64"
+              >
+                <div className="grid grid-cols-4 gap-2">
+                  {suggestedImages.map((img: string, index: number) => (
+                    <div
+                      key={`image-${index}`}
+                      className='w-full h-10 rounded-md cursor-pointer border border-gray-300 bg-center bg-no-repeat bg-cover'
+                      style={{ backgroundImage: `url(${img})` }}
+                      onClick={() => handleImageSelect(img)}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            </PopoverContent>
+          )}
+        </AnimatePresence>
+      </Popover>
+    </div>
+  );
 };
 
 export default function Dashboard() {
@@ -205,6 +335,25 @@ export default function Dashboard() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
 
   const [mobilePreviewSize, setMobilePreviewSize] = useState({ width: 0, height: 0 });
+
+  const [backgroundType, setBackgroundType] = useState<BackgroundType>('gradient');
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const [suggestedImages, setSuggestedImages] = useState<string[]>([
+    'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
+    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
+    'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f',
+    'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1',
+    'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
+    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
+    'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f',
+    'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1',
+    'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
+    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
+    'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f',
+    'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1',
+    'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
+    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
+  ]);
 
   useEffect(() => {
     const updateMobilePreviewSize = () => {
@@ -269,7 +418,7 @@ export default function Dashboard() {
       setOriginalImage(file)
       const reader = new FileReader()
       reader.onload = (e) => {
-        const img = new Image()
+        const img = document.createElement('img');
         img.onload = () => {
           setImageObject(img)
           setUploadedImage(img.src)
@@ -334,47 +483,16 @@ export default function Dashboard() {
         <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1'>
           <CardContent className='space-y-4 p-6'>
             <h2 className='text-xl font-bold mb-4'>Background</h2>
-            <div className='flex items-center space-x-4 mb-4'>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <div 
-                    className='w-10 h-10 rounded-md cursor-pointer border border-gray-300' 
-                    style={{ background: backgroundColor }}
-                  />
-                </PopoverTrigger>
-                <PopoverContent className="w-64">
-                  <div className="grid grid-cols-4 gap-2">
-                  {suggestedColors.map((gradient, index) => (
-                      <div
-                        key={index}
-                        className='w-full h-10 rounded-md cursor-pointer border border-gray-300'
-                        style={{ background: gradient }}
-                        onClick={() => setBackgroundColor(gradient)}
-                      />
-                    ))}
-                  </div>
-                  {/* <div className="mt-4">
-                    <ColorPicker 
-                      color={backgroundColor} 
-                      onChange={(color) => {
-                        if (typeof color === 'string' && color.includes('linear-gradient')) {
-                          setBackgroundColor(color);
-                        } else {
-                          setBackgroundColor(`linear-gradient(to left, ${color}, ${color})`);
-                        }
-                      }} 
-                    />
-                  </div> */}
-                </PopoverContent>
-              </Popover>
-              {/* <div className='flex-1'>
-                <Label>Current Background</Label>
-                <div 
-                  className='w-full h-10 rounded-md border border-gray-300 mt-2' 
-                  style={{ background: backgroundColor }}
-                />
-              </div> */}
-            </div>
+            <BackgroundSelector
+              type={backgroundType}
+              color={backgroundColor}
+              image={backgroundImage}
+              onTypeChange={setBackgroundType}
+              onColorChange={setBackgroundColor}
+              onImageChange={setBackgroundImage}
+              suggestedColors={suggestedColors}
+              suggestedImages={suggestedImages}
+            />
             <div className='flex space-x-4'>
               <div className='flex-1 space-y-2'>
                 <Label>Opacity</Label>
@@ -543,7 +661,9 @@ export default function Dashboard() {
                 image={imageObject}
                 containerRef={previewContainerRef}
                 backgroundSettings={{
+                  type: backgroundType,
                   color: backgroundColor,
+                  image: backgroundImage,
                   opacity: backgroundOpacity,
                   cornerRadius: backgroundCornerRadius,
                 }}
@@ -613,7 +733,9 @@ export default function Dashboard() {
                   image={imageObject}
                   containerRef={previewContainerRef}
                   backgroundSettings={{
+                    type: backgroundType,
                     color: backgroundColor,
+                    image: backgroundImage,
                     opacity: backgroundOpacity,
                     cornerRadius: backgroundCornerRadius,
                   }}
@@ -658,28 +780,16 @@ export default function Dashboard() {
           <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1'>
             <CardContent className='space-y-4 p-6'>
               <h2 className='text-xl font-bold mb-4'>Background</h2>
-              <div className='flex items-center space-x-4 mb-4'>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <div 
-                      className='w-10 h-10 rounded-md cursor-pointer border border-gray-300' 
-                      style={{ background: backgroundColor }}
-                    />
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[calc(100vw-2rem)] sm:w-64" sideOffset={5}>
-                    <div className="grid grid-cols-5 gap-2">
-                      {suggestedColors.map((gradient, index) => (
-                        <div
-                          key={index}
-                          className='w-full h-10 rounded-md cursor-pointer border border-gray-300'
-                          style={{ background: gradient }}
-                          onClick={() => setBackgroundColor(gradient)}
-                        />
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <BackgroundSelector
+                type={backgroundType}
+                color={backgroundColor}
+                image={backgroundImage}
+                onTypeChange={setBackgroundType}
+                onColorChange={setBackgroundColor}
+                onImageChange={setBackgroundImage}
+                suggestedColors={suggestedColors}
+                suggestedImages={suggestedImages}
+              />
               <div className='flex space-x-4'>
                 <div className='flex-1 space-y-2'>
                   <Label>Opacity</Label>
@@ -837,27 +947,6 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
-        </div>
-
-        <div className='h-[10%] bg-background p-4 flex flex-col justify-between'>
-          <div className="flex justify-center space-x-4">
-            <Button 
-              onClick={handleDownload} 
-              disabled={!downloadableCanvas || !imageObject}
-              className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
-            >
-              <Download className="mr-2 h-5 w-5" /> Download
-            </Button>
-            <Button 
-              onClick={handleReset}
-              className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
-            >
-              <RefreshCw className="mr-2 h-5 w-5" /> Reset
-            </Button>
-          </div>
-          <div className="text-center text-sm text-gray-500">
-            Created by <a href="https://mitvaghani.com" target="_blank" rel="noopener noreferrer" className="text-black hover:underline">Mit Vaghani</a>
-          </div>
         </div>
       </div>
     </div>
