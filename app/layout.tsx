@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/react"
 import { GeistSans } from 'geist/font/sans'
 import type { Metadata } from 'next'
 import './globals.css'
+import RandomGradientBackground from '@/components/RandomGradientBackground'
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://starter.rasmic.xyz"),
@@ -36,35 +37,26 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <AuthWrapper>
-      <html lang="en" suppressHydrationWarning>
-        <head>
-          <link
-            rel="preload"
-            href="https://utfs.io/f/31dba2ff-6c3b-4927-99cd-b928eaa54d5f-5w20ij.png"
-            as="image"
-          />
-          <link
-            rel="preload"
-            href="https://utfs.io/f/69a12ab1-4d57-4913-90f9-38c6aca6c373-1txg2.png"
-            as="image"
-          />
-        </head>
-        <body className={GeistSans.className}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${GeistSans.className} antialiased relative`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <Provider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
+            <AuthWrapper>
+              <RandomGradientBackground />
+              <div className="relative z-10">
+                {children}
+              </div>
               <Toaster />
-            </ThemeProvider>
+            </AuthWrapper>
           </Provider>
-          <Analytics />
-        </body>
-      </html>
-    </AuthWrapper>
+        </ThemeProvider>
+        <Analytics />
+      </body>
+    </html>
   )
 }
