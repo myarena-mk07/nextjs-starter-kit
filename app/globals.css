@@ -6,7 +6,7 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
+    --card: 0 0% 98%;
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
@@ -24,19 +24,14 @@
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
     --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 0 0% 3%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 0 0% 3%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 240 5.9% 10%;
@@ -51,11 +46,6 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
   }
 }
 
@@ -66,4 +56,56 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom slider styles */
+.slider {
+  @apply appearance-none w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 outline-none;
+}
+
+.slider::-webkit-slider-thumb {
+  @apply appearance-none w-4 h-4 rounded-full bg-primary cursor-pointer;
+}
+
+.slider::-moz-range-thumb {
+  @apply w-4 h-4 rounded-full bg-primary cursor-pointer border-none;
+}
+
+.slider::-webkit-slider-runnable-track {
+  @apply rounded-full bg-primary/20;
+}
+
+.slider::-moz-range-track {
+  @apply rounded-full bg-primary/20;
+}
+
+.slider::-webkit-slider-thumb {
+  @apply -mt-1;
+}
+
+.slider::-moz-range-thumb {
+  @apply -mt-1;
+}
+
+/* Filled track styles */
+.slider::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) var(--slider-progress, 0%), hsl(var(--primary) / 0.2) var(--slider-progress, 0%), hsl(var(--primary) / 0.2) 100%);
+}
+
+.slider::-moz-range-progress {
+  @apply bg-primary;
+}
+
+/* Update thumb styles to match filled track color */
+.slider::-webkit-slider-thumb {
+  @apply bg-primary border-none;
+}
+
+.slider::-moz-range-thumb {
+  @apply bg-primary border-none;
+}
+
+/* Popover content styles */
+.popover-content {
+  @apply bg-background text-foreground border border-border shadow-md rounded-md;
 }

@@ -38,24 +38,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${GeistSans.className} antialiased relative`}>
+      <body className="min-h-screen bg-background font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <Provider>
-            <AuthWrapper>
-              <RandomGradientBackground />
-              <div className="relative z-10">
-                {children}
-              </div>
-              <Toaster />
-            </AuthWrapper>
-          </Provider>
+          {children}
         </ThemeProvider>
-        <Analytics />
       </body>
     </html>
   )

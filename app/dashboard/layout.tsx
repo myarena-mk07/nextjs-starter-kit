@@ -3,9 +3,9 @@ import DashboardTopNav from "./_components/dashbord-top-nav"
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen w-full">
+    <div className="min-h-screen bg-background">
       <DashboardTopNav />
-      <main className="p-4">
+      <main>
         {children}
       </main>
     </div>

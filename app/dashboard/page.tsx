@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
@@ -16,6 +16,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion';
 import { AutoSuggestedBackgrounds } from './_components/AutoSuggestedBackgrounds';
 import ColorThief from 'colorthief';
+import { Loader2 } from 'lucide-react'; // Add this import for the loading spinner
 
 // Update the BackgroundType
 type BackgroundType = 'gradient' | 'image' | 'custom' | 'freeform';
@@ -26,81 +27,79 @@ type ColorPoint = {
   y: number;
 };
 
-const ImagePreview = ({ image, containerRef, backgroundSettings, imageSettings, shadowSettings, previewSize, onDownloadableCanvasReady }: {
-  image: HTMLImageElement;
-  containerRef: React.RefObject<HTMLDivElement>;
-  backgroundSettings: {
-    type: BackgroundType;
-    color: string | ColorPoint[];
-    image: string | null;
-    customImage: string | null;
-    opacity: number;
-    cornerRadius: number;
-  };
-  imageSettings: {
-    cornerRadius: number;
-    offsetX: number;
-    offsetY: number;
-    padding: number;
-  };
-  shadowSettings: {
-    color: string;
-    opacity: number;
-    blur: number;
-    distance: number;
-  };
-  previewSize: {
-    width: number;
-    height: number;
-  };
-  onDownloadableCanvasReady: (canvas: HTMLCanvasElement) => void;
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const downloadableCanvasRef = useRef<HTMLCanvasElement>(null);
+// Add this function at the top level of the file
+const createGradientPattern = (width: number, height: number, points: ColorPoint[]): CanvasPattern | null => {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
 
-  useEffect(() => {
-    if (image && previewSize.width && previewSize.height) {
-      const canvas = canvasRef.current;
-      const downloadableCanvas = downloadableCanvasRef.current;
-      if (!canvas || !downloadableCanvas) return;
-      const ctx = canvas.getContext('2d');
-      const downloadableCtx = downloadableCanvas.getContext('2d');
-      if (!ctx || !downloadableCtx) return;
+  const imageData = ctx.createImageData(width, height);
+  const data = imageData.data;
 
-      const imageAspectRatio = image.width / image.height;
-      let previewWidth = previewSize.width;
-      let previewHeight = previewSize.height;
-      const containerAspectRatio = previewWidth / previewHeight;
-
-      if (imageAspectRatio > containerAspectRatio) {
-        previewHeight = previewWidth / imageAspectRatio;
-      } else {
-        previewWidth = previewHeight * imageAspectRatio;
-      }
-
-      canvas.width = previewWidth;
-      canvas.height = previewHeight;
-      downloadableCanvas.width = image.width;
-      downloadableCanvas.height = image.height;
-
-      applyImageEffects(ctx, canvas.width, canvas.height, image, backgroundSettings, imageSettings, shadowSettings);
-      applyImageEffects(downloadableCtx, downloadableCanvas.width, downloadableCanvas.height, image, backgroundSettings, imageSettings, shadowSettings);
-
-      onDownloadableCanvasReady(downloadableCanvas);
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      const index = (y * width + x) * 4;
+      const color = getInterpolatedColor((x / width) * 100, (y / height) * 100, points);
+      data[index] = color.r;
+      data[index + 1] = color.g;
+      data[index + 2] = color.b;
+      data[index + 3] = 255;
     }
-  }, [image, backgroundSettings, imageSettings, shadowSettings, previewSize, onDownloadableCanvasReady]);
+  }
 
-  return (
-    <>
-      <canvas
-        ref={canvasRef}
-        className="max-w-full max-h-full object-contain"
-      />
-      <canvas ref={downloadableCanvasRef} style={{ display: 'none' }} />
-    </>
-  );
+  ctx.putImageData(imageData, 0, 0);
+  return ctx.createPattern(canvas, 'repeat');
 };
 
+// Optimize getInterpolatedColor function
+const getInterpolatedColor = (x: number, y: number, points: ColorPoint[]) => {
+  let totalWeight = 0;
+  let r = 0, g = 0, b = 0;
+
+  for (let i = 0; i < points.length; i++) {
+    const point = points[i];
+    const dx = point.x - x;
+    const dy = point.y - y;
+    const distance = dx * dx + dy * dy; // Removed Math.sqrt for performance
+    const weight = 1 / (distance + 1);
+
+    totalWeight += weight;
+    const [pr, pg, pb] = hexToRgb(point.color);
+    r += pr * weight;
+    g += pg * weight;
+    b += pb * weight;
+  }
+
+  const invTotalWeight = 1 / totalWeight;
+  return {
+    r: Math.round(r * invTotalWeight),
+    g: Math.round(g * invTotalWeight),
+    b: Math.round(b * invTotalWeight)
+  };
+};
+
+// Update the renderFreeformGradient function
+const renderFreeformGradient = (ctx: CanvasRenderingContext2D, width: number, height: number, points: ColorPoint[]) => {
+  const imageData = ctx.createImageData(width, height);
+  const data = imageData.data;
+
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      const index = (y * width + x) * 4;
+      const color = getInterpolatedColor((x / width) * 100, (y / height) * 100, points);
+      data[index] = color.r;
+      data[index + 1] = color.g;
+      data[index + 2] = color.b;
+      data[index + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+};
+
+// Update the applyImageEffects function
 const applyImageEffects = (
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
@@ -113,6 +112,7 @@ const applyImageEffects = (
     customImage: string | null;
     opacity: number;
     cornerRadius: number;
+    pattern?: CanvasPattern | null;
   },
   imageSettings: {
     cornerRadius: number;
@@ -172,25 +172,25 @@ const applyImageEffects = (
     const tempCtx = tempCanvas.getContext('2d');
     if (tempCtx) {
       renderFreeformGradient(tempCtx, backgroundWidth, backgroundHeight, backgroundSettings.color);
-      ctx.drawImage(tempCanvas, backgroundX, backgroundY, backgroundWidth, backgroundHeight);
+      ctx.drawImage(tempCanvas, backgroundX, backgroundY);
     }
   } else if (backgroundSettings.type === 'gradient' && typeof backgroundSettings.color === 'string') {
-    // Handle linear gradient
+    const gradient = ctx.createLinearGradient(backgroundX, backgroundY, backgroundX + backgroundWidth, backgroundY + backgroundHeight);
     const gradientMatch = backgroundSettings.color.match(/linear-gradient\((.*?)\)/);
     if (gradientMatch) {
       const [angle, ...colorStops] = gradientMatch[1].split(',').map(s => s.trim());
-      const gradient = ctx.createLinearGradient(backgroundX, backgroundY, backgroundX + backgroundWidth, backgroundY + backgroundHeight);
       colorStops.forEach((stop, index) => {
         const [color, position] = stop.split(' ');
         gradient.addColorStop(position ? parseFloat(position) / 100 : index / (colorStops.length - 1), color);
       });
-      ctx.fillStyle = gradient;
     } else {
-      ctx.fillStyle = backgroundSettings.color;
+      gradient.addColorStop(0, backgroundSettings.color);
+      gradient.addColorStop(1, backgroundSettings.color);
     }
+    ctx.fillStyle = gradient;
     ctx.fillRect(backgroundX, backgroundY, backgroundWidth, backgroundHeight);
   } else if (backgroundSettings.type === 'image' && backgroundSettings.image) {
-    const bgImage = document.createElement('img');
+    const bgImage = new window.Image();
     bgImage.src = backgroundSettings.image;
     bgImage.onload = () => {
       ctx.drawImage(bgImage, backgroundX, backgroundY, backgroundWidth, backgroundHeight);
@@ -198,7 +198,7 @@ const applyImageEffects = (
     };
     return; // Exit the function early, the rest will be handled in the onload callback
   } else if (backgroundSettings.type === 'custom' && backgroundSettings.customImage) {
-    const bgImage = document.createElement('img');
+    const bgImage = new window.Image();
     bgImage.src = backgroundSettings.customImage;
     bgImage.onload = () => {
       ctx.drawImage(bgImage, backgroundX, backgroundY, backgroundWidth, backgroundHeight);
@@ -248,73 +248,106 @@ const applyImageEffects = (
   }
 };
 
-const renderFreeformGradient = (ctx: CanvasRenderingContext2D, width: number, height: number, points: ColorPoint[]) => {
-  const imageData = ctx.createImageData(width, height);
-  const data = imageData.data;
-
-  for (let x = 0; x < width; x++) {
-    for (let y = 0; y < height; y++) {
-      const index = (y * width + x) * 4;
-      const color = getInterpolatedColor(x / width * 100, y / height * 100, points);
-      data[index] = color.r;
-      data[index + 1] = color.g;
-      data[index + 2] = color.b;
-      data[index + 3] = 255;
-    }
-  }
-
-  ctx.putImageData(imageData, 0, 0);
-};
-
-const getInterpolatedColor = (x: number, y: number, points: ColorPoint[]) => {
-  let totalWeight = 0;
-  let r = 0, g = 0, b = 0;
-
-  points.forEach(point => {
-    const dx = point.x - x;
-    const dy = point.y - y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const weight = 1 / (distance * distance + 1);
-
-    totalWeight += weight;
-    const [pr, pg, pb] = hexToRgb(point.color);
-    r += pr * weight;
-    g += pg * weight;
-    b += pb * weight;
-  });
-
-  return {
-    r: Math.round(r / totalWeight),
-    g: Math.round(g / totalWeight),
-    b: Math.round(b / totalWeight)
-  };
-};
-
 const hexToRgb = (hex: string): [number, number, number] => {
   const bigint = parseInt(hex.slice(1), 16);
   return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
 };
 
-const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onColorChange, onImageChange, onCustomImageChange, suggestedColors, suggestedImages, isOriginalImageUploaded, imageColors }: {
+// Add this new interface for the ImagePreview props
+interface ImagePreviewProps {
+  image: HTMLImageElement;
+  containerRef: React.RefObject<HTMLDivElement>;
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+  backgroundSettings: {
+    type: BackgroundType;
+    color: string | ColorPoint[];
+    image: string | null;
+    customImage: string | null;
+    opacity: number;
+    cornerRadius: number;
+  };
+  imageSettings: {
+    cornerRadius: number;
+    offsetX: number;
+    offsetY: number;
+    padding: number;
+  };
+  shadowSettings: {
+    color: string;
+    opacity: number;
+    blur: number;
+    distance: number;
+  };
+  previewSize: { width: number; height: number };
+  onDownloadableCanvasReady: (canvas: HTMLCanvasElement) => void;
+}
+
+// Add this new ImagePreview component
+const ImagePreview: React.FC<ImagePreviewProps> = ({
+  image,
+  containerRef,
+  canvasRef,
+  backgroundSettings,
+  imageSettings,
+  shadowSettings,
+  previewSize,
+  onDownloadableCanvasReady
+}) => {
+  useEffect(() => {
+    if (canvasRef.current && containerRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        canvas.width = previewSize.width;
+        canvas.height = previewSize.height;
+        applyImageEffects(
+          ctx,
+          canvas.width,
+          canvas.height,
+          image,
+          backgroundSettings,
+          imageSettings,
+          shadowSettings
+        );
+        onDownloadableCanvasReady(canvas);
+      }
+    }
+  }, [image, backgroundSettings, imageSettings, shadowSettings, previewSize, onDownloadableCanvasReady]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        maxWidth: '100%',
+        maxHeight: '100%',
+        objectFit: 'contain'
+      }}
+    />
+  );
+};
+
+const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onColorChange, onImageChange, onCustomImageChange, suggestedColors, suggestedImages, isOriginalImageUploaded, imageColors, isApplying, applyingIndex }: {
   type: BackgroundType;
   color: string | ColorPoint[];
   image: string | null;
   customImage: string | null;
   onTypeChange: (type: BackgroundType) => void;
-  onColorChange: (color: string | ColorPoint[]) => void;
+  onColorChange: (background: string | ColorPoint[], index: number) => Promise<void>;
   onImageChange: (image: string) => void;
   onCustomImageChange: (image: string | null) => void;
   suggestedColors: string[];
   suggestedImages: string[];
   isOriginalImageUploaded: boolean;
   imageColors: string[];
+  isApplying: boolean;
+  applyingIndex: number | null;
 }) => {
   const [isGradientOpen, setIsGradientOpen] = useState(false);
   const [isImageOpen, setIsImageOpen] = useState(false);
 
   const handleGradientSelect = (gradient: string) => {
     onTypeChange('gradient');
-    onColorChange(gradient);
+    onColorChange(gradient, -1);
     setIsGradientOpen(false);
   };
 
@@ -341,7 +374,13 @@ const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onC
     onCustomImageChange(null);
     if (type === 'custom') {
       onTypeChange('gradient');
-      onColorChange(suggestedColors[0]); // Set to the first suggested color
+      onColorChange(suggestedColors[0], -1); // Set to the first suggested color
+    }
+  };
+
+  const handleSelectBackground = async (background: string | ColorPoint[], index: number) => {
+    if (!isApplying) {
+      await onColorChange(background, index);
     }
   };
 
@@ -352,15 +391,9 @@ const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onC
         <h3 className="text-lg font-semibold mb-2">Auto-suggested Gradients</h3>
         <AutoSuggestedBackgrounds
           imageColors={imageColors}
-          onSelectBackground={(background) => {
-            if (Array.isArray(background)) {
-              onTypeChange('freeform');
-              onColorChange(background);
-            } else {
-              onTypeChange('gradient');
-              onColorChange(background);
-            }
-          }}
+          onSelectBackground={handleSelectBackground}
+          isApplying={isApplying}
+          applyingIndex={applyingIndex}
         />
       </div>
 
@@ -371,11 +404,11 @@ const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onC
           <Popover open={isGradientOpen} onOpenChange={setIsGradientOpen}>
             <PopoverTrigger asChild>
               <div 
-                className='w-20 h-20 rounded-md cursor-pointer border border-gray-300' 
+                className='w-20 h-20 rounded-md cursor-pointer' 
                 style={{ background: type === 'gradient' && typeof color === 'string' ? color : suggestedColors[0] }}
               />
             </PopoverTrigger>
-            <PopoverContent className="w-64">
+            <PopoverContent className="w-64 bg-background text-foreground border border-border shadow-md rounded-md p-2">
               <div className="grid grid-cols-4 gap-2">
                 {suggestedColors.map((gradient, index) => (
                   <div
@@ -392,11 +425,11 @@ const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onC
           <Popover open={isImageOpen} onOpenChange={setIsImageOpen}>
             <PopoverTrigger asChild>
               <div 
-                className='w-20 h-20 rounded-md cursor-pointer border border-gray-300 bg-cover bg-center' 
+                className='w-20 h-20 rounded-md cursor-pointer bg-cover bg-center' 
                 style={{ backgroundImage: type === 'image' ? `url(${image})` : `url(${suggestedImages[0]})` }}
               />
             </PopoverTrigger>
-            <PopoverContent className="w-64">
+            <PopoverContent className="w-64 bg-background text-foreground border border-border shadow-md rounded-md p-2">
               <div className="grid grid-cols-3 gap-2">
                 {suggestedImages.map((img, index) => (
                   <div
@@ -420,7 +453,7 @@ const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onC
             />
             <label htmlFor="custom-image-upload">
               <div 
-                className='w-20 h-20 rounded-md cursor-pointer border border-gray-300 flex items-center justify-center bg-cover bg-center'
+                className='w-20 h-20 rounded-md cursor-pointer flex items-center justify-center bg-cover bg-center'
                 style={{ backgroundImage: customImage ? `url(${customImage})` : 'none' }}
               >
                 {!customImage && (
@@ -505,6 +538,66 @@ export default function Dashboard() {
 
   const [isOriginalImageUploaded, setIsOriginalImageUploaded] = useState(false);
   const [imageColors, setImageColors] = useState<string[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const [isApplyingBackground, setIsApplyingBackground] = useState(false);
+  const [applyingBackgroundIndex, setApplyingBackgroundIndex] = useState<number | null>(null);
+
+  const generateBackgrounds = (previewWidth: number, previewHeight: number) => {
+    const generateFreeformGradient = (colors: string[], numColors: number, width: number, height: number) => {
+      const selectedColors = colors.sort(() => 0.5 - Math.random()).slice(0, numColors);
+      const gradientStops = selectedColors.map((color) => {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        return { color, x, y };
+      });
+      return gradientStops;
+    };
+
+    const generateDiagonalGradient = (colors: string[]) => {
+      const angle = Math.floor(Math.random() * 360);
+      return `linear-gradient(${angle}deg, ${colors[0]} 0%, ${colors[1]} 50%, ${colors[2]} 100%)`;
+    };
+
+    const isLightColor = (color: string) => {
+      const hex = color.replace('#', '');
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+      return brightness > 155;
+    };
+
+    const generateMatchingColors = (baseColors: string[]) => {
+      return baseColors.map(color => {
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        return `#${((r + 128) % 256).toString(16).padStart(2, '0')}${((g + 128) % 256).toString(16).padStart(2, '0')}${((b + 128) % 256).toString(16).padStart(2, '0')}`;
+      });
+    };
+
+    return async (imageColors: string[]) => {
+      if (imageColors.length === 0) return Array(10).fill('');
+      
+      const backgrounds = await Promise.all([...Array(10)].map(async () => {
+        await new Promise(resolve => setTimeout(resolve, 100)); // Simulate some processing time
+        const randomChoice = Math.random();
+        if (randomChoice < 0.4) {
+          return generateFreeformGradient(imageColors, Math.floor(Math.random() * 5) + 3, previewWidth, previewHeight);
+        } else if (randomChoice < 0.8) {
+          return generateDiagonalGradient(imageColors.slice(0, 3));
+        } else {
+          return imageColors[Math.floor(Math.random() * imageColors.length)];
+        }
+      }));
+      
+      return backgrounds;
+    };
+  };
+
+  const [backgroundGenerator, setBackgroundGenerator] = useState(() => generateBackgrounds(0, 0));
 
   useEffect(() => {
     const updateMobilePreviewSize = () => {
@@ -559,6 +652,10 @@ export default function Dashboard() {
       extractColors();
     }
   }, [imageObject]);
+
+  useEffect(() => {
+    setBackgroundGenerator(() => generateBackgrounds(previewSize.width, previewSize.height));
+  }, [previewSize.width, previewSize.height]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
@@ -691,7 +788,10 @@ export default function Dashboard() {
     }
   };
 
-  const handleSelectBackground = (background: string | ColorPoint[]) => {
+  const handleSelectBackground = async (background: string | ColorPoint[], index: number) => {
+    setIsApplyingBackground(true);
+    setApplyingBackgroundIndex(index);
+
     if (Array.isArray(background)) {
       setBackgroundType('freeform');
       setBackgroundColor(background);
@@ -699,84 +799,93 @@ export default function Dashboard() {
       setBackgroundType('gradient');
       setBackgroundColor(background);
     }
+    
+    // Force an update of the preview
+    if (imageObject && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        try {
+          await new Promise<void>(resolve => {
+            requestAnimationFrame(async () => {
+              await applyImageEffects(
+                ctx,
+                canvas.width,
+                canvas.height,
+                imageObject,
+                {
+                  type: Array.isArray(background) ? 'freeform' : 'gradient',
+                  color: background,
+                  image: backgroundImage,
+                  customImage: customBackgroundImage,
+                  opacity: backgroundOpacity,
+                  cornerRadius: backgroundCornerRadius,
+                },
+                {
+                  cornerRadius: imageCornerRadius,
+                  offsetX: horizontalOffset,
+                  offsetY: verticalOffset,
+                  padding: imagePadding,
+                },
+                {
+                  color: shadowColor,
+                  opacity: shadowOpacity,
+                  blur: shadowBlur,
+                  distance: shadowDistance,
+                }
+              );
+              resolve();
+            });
+          });
+        } finally {
+          setIsApplyingBackground(false);
+          setApplyingBackgroundIndex(null);
+        }
+      }
+    }
   };
 
-  const generateBackgrounds = (colors: string[]) => {
-    const generateFreeformGradient = (colors: string[], numColors: number) => {
-      const selectedColors = colors.sort(() => 0.5 - Math.random()).slice(0, numColors);
-      const gradientStops = selectedColors.map((color) => {
-        const x = Math.random() * 100;
-        const y = Math.random() * 100;
-        return { color, x, y };
+  const buttonClass = (isActive: boolean) => cn(
+    "px-4 py-2 rounded-md transition-colors",
+    isActive
+      ? "bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+      : "bg-gray-200 text-black hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+  );
+
+  const handleGenerateMore = async () => {
+    if (imageColors.length > 0) {
+      const newBackgrounds = await backgroundGenerator(imageColors);
+      setSuggestedColors(newBackgrounds);
+    } else {
+      toast({
+        title: "No image colors available",
+        description: "Please upload an image first to generate more backgrounds.",
+        variant: "destructive",
       });
-      return gradientStops;
-    };
-
-    const generateDiagonalGradient = (colors: string[]) => {
-      const angle = Math.floor(Math.random() * 360);
-      return `linear-gradient(${angle}deg, ${colors[0]} 0%, ${colors[1]} 50%, ${colors[2]} 100%)`;
-    };
-
-    const isLightColor = (color: string) => {
-      const hex = color.replace('#', '');
-      const r = parseInt(hex.substr(0, 2), 16);
-      const g = parseInt(hex.substr(2, 2), 16);
-      const b = parseInt(hex.substr(4, 2), 16);
-      const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-      return brightness > 155;
-    };
-
-    const generateMatchingColors = (baseColors: string[]) => {
-      // This is a simplified version. In a real-world scenario, you'd want to use a more sophisticated color matching algorithm.
-      return baseColors.map(color => {
-        const hex = color.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        return `#${((r + 128) % 256).toString(16).padStart(2, '0')}${((g + 128) % 256).toString(16).padStart(2, '0')}${((b + 128) % 256).toString(16).padStart(2, '0')}`;
-      });
-    };
-
-    const generateBackgrounds = (imageColors: string[]) => {
-      if (imageColors.length === 0) return Array(10).fill('');
-      
-      const backgrounds = [
-        generateFreeformGradient(imageColors, Math.floor(Math.random() * 5) + 4), // 1
-        generateFreeformGradient(imageColors.slice(0, 3), 3), // 2
-        generateFreeformGradient(imageColors.filter(c => isLightColor(c)), Math.floor(Math.random() * 5) + 3), // 3
-        generateFreeformGradient([...imageColors, ...generateMatchingColors(imageColors)], Math.floor(Math.random() * 4) + 5), // 4
-        generateFreeformGradient([...imageColors, ...generateMatchingColors(imageColors)], Math.floor(Math.random() * 3) + 3), // 5
-        generateFreeformGradient(generateMatchingColors(imageColors), Math.floor(Math.random() * 5) + 4), // 6
-        generateFreeformGradient(generateMatchingColors(imageColors), Math.floor(Math.random() * 4) + 3), // 7
-        generateFreeformGradient([...imageColors, ...generateMatchingColors(imageColors)], Math.floor(Math.random() * 3) + 1), // 8
-        generateDiagonalGradient(generateMatchingColors(imageColors).slice(0, 3)), // 9
-        imageColors[Math.floor(Math.random() * imageColors.length)] // 10
-      ];
-      return backgrounds;
-    };
-
-    return generateBackgrounds(colors);
+    }
   };
 
   return (
-    <div className='flex flex-col md:flex-row h-[calc(100vh-4rem)]'>
-      <div className='hidden md:block w-1/3 h-full overflow-y-auto p-4 space-y-4'>
-        <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1'>
+    <div className='flex flex-col md:flex-row h-[calc(100vh-4rem)] bg-background text-foreground'>
+      <div className='hidden md:block w-1/3 h-full overflow-y-auto p-4 space-y-4 bg-background'>
+        <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
           <CardContent className='space-y-4 p-6'>
-            <h2 className='text-xl font-bold mb-4'>Background</h2>
+            <h2 className='text-xl font-bold mb-4 text-foreground'>Background</h2>
             <BackgroundSelector
               type={backgroundType}
               color={backgroundColor}
               image={backgroundImage}
               customImage={customBackgroundImage}
               onTypeChange={setBackgroundType}
-              onColorChange={(color: string | ColorPoint[]) => setBackgroundColor(color)}
+              onColorChange={handleSelectBackground}
               onImageChange={setBackgroundImage}
               onCustomImageChange={handleCustomBackgroundChange}
               suggestedColors={suggestedColors}
               suggestedImages={suggestedImages}
               isOriginalImageUploaded={isOriginalImageUploaded}
               imageColors={imageColors}
+              isApplying={isApplyingBackground}
+              applyingIndex={applyingBackgroundIndex}
             />
             <div className='flex space-x-4'>
               <div className='flex-1 space-y-2'>
@@ -787,6 +896,8 @@ export default function Dashboard() {
                   step={1}
                   value={[backgroundOpacity]}
                   onValueChange={(value) => setBackgroundOpacity(value[0])}
+                  className="slider"
+                  style={{ "--slider-progress": `${backgroundOpacity}%` } as React.CSSProperties}
                 />
                 <span className="text-sm text-gray-500">{backgroundOpacity}%</span>
               </div>
@@ -798,6 +909,8 @@ export default function Dashboard() {
                   step={1}
                   value={[backgroundCornerRadius]}
                   onValueChange={(value) => setBackgroundCornerRadius(value[0])}
+                  className="slider"
+                  style={{ "--slider-progress": `${backgroundCornerRadius}%` } as React.CSSProperties}
                 />
                 <span className="text-sm text-gray-500">{backgroundCornerRadius}% of image size</span>
               </div>
@@ -805,9 +918,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1'>
+        <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
           <CardContent className='space-y-4 p-6'>
-            <h2 className='text-xl font-bold mb-4'>Shadow</h2>
+            <h2 className='text-xl font-bold mb-4 text-foreground'>Shadow</h2>
             <div className='flex space-x-4'>
               <div className='flex-1 space-y-2'>
                 <Label>Opacity</Label>
@@ -817,6 +930,8 @@ export default function Dashboard() {
                   step={1}
                   value={[shadowOpacity]}
                   onValueChange={(value) => setShadowOpacity(value[0])}
+                  className="slider"
+                  style={{ "--slider-progress": `${shadowOpacity}%` } as React.CSSProperties}
                 />
                 <span className="text-sm text-gray-500">{shadowOpacity}%</span>
               </div>
@@ -828,6 +943,8 @@ export default function Dashboard() {
                   step={0.1}
                   value={[shadowBlur]}
                   onValueChange={(value) => setShadowBlur(value[0])}
+                  className="slider"
+                  style={{ "--slider-progress": `${shadowBlur}%` } as React.CSSProperties}
                 />
                 <span className="text-sm text-gray-500">{shadowBlur}% of image size</span>
               </div>
@@ -849,6 +966,8 @@ export default function Dashboard() {
                     step={0.1}
                     value={[shadowDistance]}
                     onValueChange={(value) => setShadowDistance(value[0])}
+                    className="slider"
+                    style={{ "--slider-progress": `${shadowDistance}%` } as React.CSSProperties}
                   />
                   <span className="text-sm text-gray-500">{shadowDistance}% of image size</span>
                 </div>
@@ -857,11 +976,11 @@ export default function Dashboard() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <div 
-                        className='w-10 h-10 rounded-md cursor-pointer border border-gray-300' 
+                        className='w-10 h-10 rounded-md cursor-pointer' 
                         style={{ backgroundColor: shadowColor }}
                       />
                     </PopoverTrigger>
-                    <PopoverContent>
+                    <PopoverContent className="popover-content">
                       <ColorPicker color={shadowColor} onChange={setShadowColor} />
                     </PopoverContent>
                   </Popover>
@@ -871,9 +990,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1'>
+        <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
           <CardContent className='space-y-4 p-6'>
-            <h2 className='text-xl font-bold mb-4'>Image</h2>
+            <h2 className='text-xl font-bold mb-4 text-foreground'>Image</h2>
             <div className='flex space-x-4'>
               <div className='flex-1 space-y-2'>
                 <Label>Corner Radius</Label>
@@ -883,6 +1002,8 @@ export default function Dashboard() {
                   step={1}
                   value={[imageCornerRadius]}
                   onValueChange={(value) => setImageCornerRadius(value[0])}
+                  className="slider"
+                  style={{ "--slider-progress": `${imageCornerRadius}%` } as React.CSSProperties}
                 />
                 <span className="text-sm text-gray-500">{imageCornerRadius}% of image size</span>
               </div>
@@ -894,6 +1015,8 @@ export default function Dashboard() {
                   step={1}
                   value={[imagePadding]}
                   onValueChange={(value) => setImagePadding(value[0])}
+                  className="slider"
+                  style={{ "--slider-progress": `${imagePadding}%` } as React.CSSProperties}
                 />
                 <span className="text-sm text-gray-500">{imagePadding}%</span>
               </div>
@@ -915,6 +1038,8 @@ export default function Dashboard() {
                     step={1}
                     value={[horizontalOffset]}
                     onValueChange={(value) => setHorizontalOffset(value[0])}
+                    className="slider"
+                    style={{ "--slider-progress": `${horizontalOffset}%` } as React.CSSProperties}
                   />
                   <span className="text-sm text-gray-500">{horizontalOffset}% of image width</span>
                 </div>
@@ -926,6 +1051,8 @@ export default function Dashboard() {
                     step={1}
                     value={[verticalOffset]}
                     onValueChange={(value) => setVerticalOffset(value[0])}
+                    className="slider"
+                    style={{ "--slider-progress": `${verticalOffset}%` } as React.CSSProperties}
                   />
                   <span className="text-sm text-gray-500">{verticalOffset}% of image height</span>
                 </div>
@@ -935,8 +1062,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className='hidden md:flex md:w-2/3 flex-col h-full p-4'>
-        <Card className='flex-grow flex items-center justify-center overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1'>
+      <div className='hidden md:flex md:w-2/3 flex-col h-full p-4 bg-background'>
+        <Card className='flex-grow flex items-center justify-center overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
           <div 
             ref={previewContainerRef} 
             className="w-full h-full flex items-center justify-center p-4"
@@ -945,6 +1072,7 @@ export default function Dashboard() {
               <ImagePreview
                 image={imageObject}
                 containerRef={previewContainerRef}
+                canvasRef={canvasRef}
                 backgroundSettings={{
                   type: backgroundType,
                   color: backgroundColor,
@@ -991,13 +1119,13 @@ export default function Dashboard() {
           <Button 
             onClick={handleDownload} 
             disabled={!downloadableCanvas || !imageObject}
-            className="text-lg hover:shadow-md px-10 py-7 transition-all duration-300 transform hover:-translate-y-1"
+            className={buttonClass(!!downloadableCanvas && !!imageObject)}
           >
             <Download className="mr-2 h-5 w-5" /> Download
           </Button>
           <Button 
             onClick={handleReset}
-            className="text-lg hover:shadow-md px-10 py-7 transition-all duration-300 transform hover:-translate-y-1"
+            className={buttonClass(true)}
           >
             <RefreshCw className="mr-2 h-5 w-5" /> Reset
           </Button>
