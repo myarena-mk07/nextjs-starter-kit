@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 
 interface AutoSuggestedBackgroundsProps {
   imageColors: string[];
-  onSelectBackground: (background: string | ColorPoint[]) => void;
+  onSelectBackground: (background: string | ColorPoint[]) => Promise<void>;
+  isApplying: boolean;
+  applyingIndex: number | null;
 }
 
 interface ColorPoint {
@@ -31,7 +34,7 @@ const renderFreeformGradient = (ctx: CanvasRenderingContext2D, width: number, he
   for (let x = 0; x < width; x++) {
     for (let y = 0; y < height; y++) {
       const index = (y * width + x) * 4;
-      const color = getInterpolatedColor(x / width * 100, y / height * 100, points);
+      const color = getInterpolatedColor((x / width) * 100, (y / height) * 100, points);
       data[index] = color.r;
       data[index + 1] = color.g;
       data[index + 2] = color.b;
@@ -102,19 +105,25 @@ const generateBackgrounds = (imageColors: string[]): (string | ColorPoint[])[] =
     generateFreeformGradient(imageColors, Math.floor(Math.random() * 5) + 4), // 1
     generateFreeformGradient(imageColors.slice(0, 3), 3), // 2
     generateFreeformGradient(lightColors, Math.floor(Math.random() * 5) + 3), // 3
-    generateFreeformGradient([...imageColors, ...matchingColors].slice(0, Math.floor(Math.random() * 4) + 5)), // 4
-    generateFreeformGradient([...imageColors, ...matchingColors].slice(0, Math.floor(Math.random() * 3) + 3)), // 5
-    generateFreeformGradient(matchingColors.slice(0, Math.floor(Math.random() * 5) + 4)), // 6
-    generateFreeformGradient(matchingColors.slice(0, Math.floor(Math.random() * 4) + 3)), // 7
-    generateFreeformGradient([...imageColors, ...matchingColors].slice(0, Math.floor(Math.random() * 3) + 1)), // 8
+    generateFreeformGradient([...imageColors, ...matchingColors].slice(0, Math.floor(Math.random() * 4) + 5), Math.floor(Math.random() * 5) + 4), // 4
+    generateFreeformGradient([...imageColors, ...matchingColors].slice(0, Math.floor(Math.random() * 3) + 3), Math.floor(Math.random() * 3) + 3), // 5
+    generateFreeformGradient(matchingColors.slice(0, Math.floor(Math.random() * 5) + 4), Math.floor(Math.random() * 5) + 4), // 6
+    generateFreeformGradient(matchingColors.slice(0, Math.floor(Math.random() * 4) + 3), Math.floor(Math.random() * 4) + 3), // 7
+    generateFreeformGradient([...imageColors, ...matchingColors].slice(0, Math.floor(Math.random() * 3) + 1), Math.floor(Math.random() * 3) + 1), // 8
     generateLinearGradient([darkColors[0], imageColors[Math.floor(imageColors.length / 2)], lightColors[0]]), // 9
     imageColors[Math.floor(Math.random() * imageColors.length)] // 10
   ];
 };
 
-export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> = ({ imageColors, onSelectBackground }) => {
+export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> = ({ 
+  imageColors, 
+  onSelectBackground, 
+  isApplying,
+  applyingIndex
+}) => {
   const [backgrounds, setBackgrounds] = useState<(string | ColorPoint[])[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [loadingBackgrounds, setLoadingBackgrounds] = useState<boolean[]>(new Array(10).fill(false));
 
   useEffect(() => {
     generateBackgroundsAsync(imageColors);
@@ -122,6 +131,11 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
 
   const generateBackgroundsAsync = async (colors: string[]) => {
     setIsGenerating(true);
+    setLoadingBackgrounds(new Array(10).fill(true));
+    
+    const delay = Math.random() * 1000 + 800; // Random delay between 800ms and 1800ms
+    await new Promise(resolve => setTimeout(resolve, delay));
+
     const newBackgrounds = await new Promise<(string | ColorPoint[])[]>((resolve) => {
       setTimeout(() => {
         resolve(generateBackgrounds(colors));
@@ -129,15 +143,22 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
     });
     setBackgrounds(newBackgrounds);
     setIsGenerating(false);
+    setLoadingBackgrounds(new Array(10).fill(false));
   };
 
   const handleGenerateMore = () => {
     generateBackgroundsAsync(imageColors);
   };
 
+  const handleBackgroundClick = (background: string | ColorPoint[], index: number) => {
+    if (!isApplying) {
+      onSelectBackground(background, index);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
         <AnimatePresence>
           {backgrounds.map((background, index) => (
             <motion.div
@@ -146,18 +167,19 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.3 }}
-              className="w-16 h-16 rounded-md cursor-pointer border border-gray-300 flex items-center justify-center overflow-hidden"
-              onClick={() => background && onSelectBackground(background)}
+              className="aspect-square rounded-md cursor-pointer border border-gray-300 flex items-center justify-center overflow-hidden relative"
+              onClick={() => handleBackgroundClick(background, index)}
             >
-              {background ? (
-                Array.isArray(background) ? (
+              <div className={`w-full h-full ${(isApplying && applyingIndex === index) || loadingBackgrounds[index] ? 'opacity-30' : ''}`}>
+                {Array.isArray(background) ? (
                   <canvas
-                    width={64}
-                    height={64}
+                    className="w-full h-full"
                     ref={canvas => {
                       if (canvas) {
+                        canvas.width = canvas.offsetWidth;
+                        canvas.height = canvas.offsetHeight;
                         const ctx = canvas.getContext('2d');
-                        if (ctx) renderFreeformGradient(ctx, 64, 64, background);
+                        if (ctx) renderFreeformGradient(ctx, canvas.width, canvas.height, background);
                       }
                     }}
                   />
@@ -166,9 +188,15 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
                     className="w-full h-full"
                     style={{ background: background }}
                   />
-                )
-              ) : (
-                <span className="text-[8px] text-gray-400 text-center">
+                )}
+              </div>
+              {((isApplying && applyingIndex === index) || loadingBackgrounds[index]) && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="animate-spin text-primary" size={24} />
+                </div>
+              )}
+              {!background && (
+                <span className="text-[8px] text-gray-400 text-center absolute">
                   No Image Uploaded
                 </span>
               )}
@@ -178,12 +206,7 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
       </div>
       <Button onClick={handleGenerateMore} disabled={isGenerating || imageColors.length === 0}>
         {isGenerating ? (
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          >
-            ⟳
-          </motion.div>
+          <Loader2 className="animate-spin mr-2" size={16} />
         ) : (
           'Generate More'
         )}

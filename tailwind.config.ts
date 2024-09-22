@@ -16,7 +16,7 @@ const config: Config = {
     "./src/**/*.{ts,tsx}",
   ],
   // Enabling dark mode
-  darkMode: "class", // Assuming you want to enable dark mode based on the class strategy
+  darkMode: ["class"], // Assuming you want to enable dark mode based on the class strategy
   theme: {
     // Merging container configuration from the second file
     container: {
@@ -64,10 +64,7 @@ const config: Config = {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
+        card: "hsl(var(--card))",
       },
       borderRadius: {
         lg: "var(--radius)",
