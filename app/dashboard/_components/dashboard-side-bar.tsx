@@ -9,7 +9,7 @@ import {
   Settings
 } from "lucide-react"
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation';
 import { FaTasks } from 'react-icons/fa'
 import { useState} from 'react';
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [backgroundColor, setBackgroundColor] = useState('#FF0000')
   const [backgroundOpacity, setBackgroundOpacity] = useState(100)
   const [suggestedColors, setSuggestedColors] = useState<string[]>([])
+  const pathname = usePathname();
 
   // useEffect(() => {
   //   if (imageData) {
@@ -35,7 +36,7 @@ export default function Dashboard() {
         setSuggestedColors(colors);
       };
       extractColors();
-    }
+    
   // }, [imageData]);
 
   return (
@@ -100,3 +101,4 @@ export default function Dashboard() {
     </div>
   )
 }
+
