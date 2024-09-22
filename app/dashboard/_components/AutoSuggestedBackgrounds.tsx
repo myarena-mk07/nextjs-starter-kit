@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 
 interface AutoSuggestedBackgroundsProps {
   imageColors: string[];
-  onSelectBackground: (background: string | ColorPoint[]) => Promise<void>;
+  onSelectBackground: (background: string | ColorPoint[], index: number) => Promise<void>;
   isApplying: boolean;
   applyingIndex: number | null;
 }
