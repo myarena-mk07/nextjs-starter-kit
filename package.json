@@ -63,6 +63,7 @@
     "react-day-picker": "^8.10.1",
     "react-dom": "latest",
     "react-dropzone": "^14.2.3",
+    "react-error-boundary": "^4.0.13",
     "react-hook-form": "^7.51.3",
     "react-icons": "^4.11.0",
     "recharts": "^2.12.7",

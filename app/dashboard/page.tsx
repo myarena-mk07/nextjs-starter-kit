@@ -16,7 +16,8 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion';
 import { AutoSuggestedBackgrounds } from './_components/AutoSuggestedBackgrounds';
 import ColorThief from 'colorthief';
-import { Loader2 } from 'lucide-react'; // Add this import for the loading spinner
+import { Loader2 } from 'lucide-react';
+import NextImage, { StaticImageData } from 'next/image'
 
 // Update the BackgroundType
 type BackgroundType = 'gradient' | 'image' | 'custom' | 'freeform';
@@ -167,12 +168,12 @@ const applyImageEffects = (
 
   if (backgroundSettings.type === 'freeform' && Array.isArray(backgroundSettings.color)) {
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = backgroundWidth;
-    tempCanvas.height = backgroundHeight;
+    tempCanvas.width = Math.max(1, backgroundWidth);
+    tempCanvas.height = Math.max(1, backgroundHeight);
     const tempCtx = tempCanvas.getContext('2d');
     if (tempCtx) {
-      renderFreeformGradient(tempCtx, backgroundWidth, backgroundHeight, backgroundSettings.color);
-      ctx.drawImage(tempCanvas, backgroundX, backgroundY);
+      renderFreeformGradient(tempCtx, tempCanvas.width, tempCanvas.height, backgroundSettings.color);
+      ctx.drawImage(tempCanvas, backgroundX, backgroundY, backgroundWidth, backgroundHeight);
     }
   } else if (backgroundSettings.type === 'gradient' && typeof backgroundSettings.color === 'string') {
     const gradient = ctx.createLinearGradient(backgroundX, backgroundY, backgroundX + backgroundWidth, backgroundY + backgroundHeight);
@@ -212,8 +213,8 @@ const applyImageEffects = (
   // Function to draw the main image
   function drawMainImage() {
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvasWidth;
-    tempCanvas.height = canvasHeight;
+    tempCanvas.width = Math.max(1, canvasWidth);  // Ensure minimum width of 1
+    tempCanvas.height = Math.max(1, canvasHeight);  // Ensure minimum height of 1
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) return;
 
@@ -293,13 +294,16 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   previewSize,
   onDownloadableCanvasReady
 }) => {
-  useEffect(() => {
+  const updateCanvas = useCallback(() => {
     if (canvasRef.current && containerRef.current) {
       const canvas = canvasRef.current;
+      const container = containerRef.current;
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        canvas.width = previewSize.width;
-        canvas.height = previewSize.height;
         applyImageEffects(
           ctx,
           canvas.width,
@@ -312,14 +316,20 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
         onDownloadableCanvasReady(canvas);
       }
     }
-  }, [image, backgroundSettings, imageSettings, shadowSettings, previewSize, onDownloadableCanvasReady]);
+  }, [image, backgroundSettings, imageSettings, shadowSettings, onDownloadableCanvasReady]);
+
+  useEffect(() => {
+    updateCanvas();
+    window.addEventListener('resize', updateCanvas);
+    return () => window.removeEventListener('resize', updateCanvas);
+  }, [updateCanvas]);
 
   return (
     <canvas
       ref={canvasRef}
       style={{
-        maxWidth: '100%',
-        maxHeight: '100%',
+        width: '100%',
+        height: '100%',
         objectFit: 'contain'
       }}
     />
@@ -600,21 +610,21 @@ export default function Dashboard() {
   const [backgroundGenerator, setBackgroundGenerator] = useState(() => generateBackgrounds(0, 0));
 
   useEffect(() => {
-    const updateMobilePreviewSize = () => {
-      const mobilePreviewContainer = document.getElementById('mobile-preview-container');
-      if (mobilePreviewContainer) {
-        setMobilePreviewSize({
-          width: mobilePreviewContainer.offsetWidth,
-          height: mobilePreviewContainer.offsetHeight,
-        });
+    const updateContainerSize = () => {
+      if (previewContainerRef.current) {
+        const rect = previewContainerRef.current.getBoundingClientRect();
+        setPreviewSize({
+          width: rect.width,
+          height: rect.height,
+        })
       }
-    };
+    }
 
-    updateMobilePreviewSize();
-    window.addEventListener('resize', updateMobilePreviewSize);
+    updateContainerSize()
+    window.addEventListener('resize', updateContainerSize)
 
-    return () => window.removeEventListener('resize', updateMobilePreviewSize);
-  }, []);
+    return () => window.removeEventListener('resize', updateContainerSize)
+  }, [])
 
   useEffect(() => {
     const updateContainerSize = () => {
@@ -663,7 +673,7 @@ export default function Dashboard() {
       setOriginalImage(file)
       const reader = new FileReader()
       reader.onload = (e) => {
-        const img = document.createElement('img');
+        const img = new window.Image();
         img.onload = () => {
           setImageObject(img)
           setUploadedImage(img.src)
@@ -677,12 +687,51 @@ export default function Dashboard() {
           setBackgroundCornerRadius(5)
           setImageCornerRadius(5)
           setIsOriginalImageUploaded(true);
+          
+          // Force a redraw of the preview
+          if (previewContainerRef.current && canvasRef.current) {
+            const canvas = canvasRef.current;
+            const container = previewContainerRef.current;
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              applyImageEffects(
+                ctx,
+                canvas.width,
+                canvas.height,
+                img,
+                {
+                  type: backgroundType,
+                  color: backgroundColor,
+                  image: backgroundImage,
+                  customImage: customBackgroundImage,
+                  opacity: backgroundOpacity,
+                  cornerRadius: backgroundCornerRadius,
+                },
+                {
+                  cornerRadius: imageCornerRadius,
+                  offsetX: horizontalOffset,
+                  offsetY: verticalOffset,
+                  padding: imagePadding,
+                },
+                {
+                  color: shadowColor,
+                  opacity: shadowOpacity,
+                  blur: shadowBlur,
+                  distance: shadowDistance,
+                }
+              );
+            }
+          }
         }
         img.src = e.target?.result as string
       }
       reader.readAsDataURL(file)
     }
-  }, [])
+  }, [backgroundType, backgroundColor, backgroundImage, customBackgroundImage, backgroundOpacity, backgroundCornerRadius, imageCornerRadius, horizontalOffset, verticalOffset, imagePadding, shadowColor, shadowOpacity, shadowBlur, shadowDistance])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
@@ -867,235 +916,318 @@ export default function Dashboard() {
 
   return (
     <div className='flex flex-col md:flex-row h-[calc(100vh-4rem)] bg-background text-foreground'>
-      <div className='hidden md:block w-1/3 h-full overflow-y-auto p-4 space-y-4 bg-background'>
-        <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
-          <CardContent className='space-y-4 p-6'>
-            <h2 className='text-xl font-bold mb-4 text-foreground'>Background</h2>
-            <BackgroundSelector
-              type={backgroundType}
-              color={backgroundColor}
-              image={backgroundImage}
-              customImage={customBackgroundImage}
-              onTypeChange={setBackgroundType}
-              onColorChange={handleSelectBackground}
-              onImageChange={setBackgroundImage}
-              onCustomImageChange={handleCustomBackgroundChange}
-              suggestedColors={suggestedColors}
-              suggestedImages={suggestedImages}
-              isOriginalImageUploaded={isOriginalImageUploaded}
-              imageColors={imageColors}
-              isApplying={isApplyingBackground}
-              applyingIndex={applyingBackgroundIndex}
-            />
-            <div className='flex space-x-4'>
-              <div className='flex-1 space-y-2'>
-                <Label>Opacity</Label>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[backgroundOpacity]}
-                  onValueChange={(value) => setBackgroundOpacity(value[0])}
-                  className="slider"
-                  style={{ "--slider-progress": `${backgroundOpacity}%` } as React.CSSProperties}
-                />
-                <span className="text-sm text-gray-500">{backgroundOpacity}%</span>
-              </div>
-              <div className='flex-1 space-y-2'>
-                <Label>Corner Radius</Label>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[backgroundCornerRadius]}
-                  onValueChange={(value) => setBackgroundCornerRadius(value[0])}
-                  className="slider"
-                  style={{ "--slider-progress": `${backgroundCornerRadius}%` } as React.CSSProperties}
-                />
-                <span className="text-sm text-gray-500">{backgroundCornerRadius}% of image size</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
-          <CardContent className='space-y-4 p-6'>
-            <h2 className='text-xl font-bold mb-4 text-foreground'>Shadow</h2>
-            <div className='flex space-x-4'>
-              <div className='flex-1 space-y-2'>
-                <Label>Opacity</Label>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[shadowOpacity]}
-                  onValueChange={(value) => setShadowOpacity(value[0])}
-                  className="slider"
-                  style={{ "--slider-progress": `${shadowOpacity}%` } as React.CSSProperties}
-                />
-                <span className="text-sm text-gray-500">{shadowOpacity}%</span>
-              </div>
-              <div className='flex-1 space-y-2'>
-                <Label>Blur</Label>
-                <Slider
-                  min={0}
-                  max={20}
-                  step={0.1}
-                  value={[shadowBlur]}
-                  onValueChange={(value) => setShadowBlur(value[0])}
-                  className="slider"
-                  style={{ "--slider-progress": `${shadowBlur}%` } as React.CSSProperties}
-                />
-                <span className="text-sm text-gray-500">{shadowBlur}% of image size</span>
-              </div>
-            </div>
-            <div 
-              className='flex items-center cursor-pointer'
-              onClick={() => toggleSection('shadow')}
-            >
-              <span className='mr-2'>Additional Settings</span>
-              {expandedSection === 'shadow' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </div>
-            {expandedSection === 'shadow' && (
+      {isDesktop ? (
+        <>
+        <div className='hidden md:block w-1/3 h-full overflow-y-auto p-4 space-y-4 bg-background'>
+          <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
+            <CardContent className='space-y-4 p-6'>
+              <h2 className='text-xl font-bold mb-4 text-foreground'>Background</h2>
+              <BackgroundSelector
+                type={backgroundType}
+                color={backgroundColor}
+                image={backgroundImage}
+                customImage={customBackgroundImage}
+                onTypeChange={setBackgroundType}
+                onColorChange={handleSelectBackground}
+                onImageChange={setBackgroundImage}
+                onCustomImageChange={handleCustomBackgroundChange}
+                suggestedColors={suggestedColors}
+                suggestedImages={suggestedImages}
+                isOriginalImageUploaded={isOriginalImageUploaded}
+                imageColors={imageColors}
+                isApplying={isApplyingBackground}
+                applyingIndex={applyingBackgroundIndex}
+              />
               <div className='flex space-x-4'>
                 <div className='flex-1 space-y-2'>
-                  <Label>Distance</Label>
+                  <Label>Opacity</Label>
+                  <Slider
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[backgroundOpacity]}
+                    onValueChange={(value) => setBackgroundOpacity(value[0])}
+                    className="slider"
+                    style={{ "--slider-progress": `${backgroundOpacity}%` } as React.CSSProperties}
+                  />
+                  <span className="text-sm text-gray-500">{backgroundOpacity}%</span>
+                </div>
+                <div className='flex-1 space-y-2'>
+                  <Label>Corner Radius</Label>
+                  <Slider
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[backgroundCornerRadius]}
+                    onValueChange={(value) => setBackgroundCornerRadius(value[0])}
+                    className="slider"
+                    style={{ "--slider-progress": `${backgroundCornerRadius}%` } as React.CSSProperties}
+                  />
+                  <span className="text-sm text-gray-500">{backgroundCornerRadius}% of image size</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
+            <CardContent className='space-y-4 p-6'>
+              <h2 className='text-xl font-bold mb-4 text-foreground'>Shadow</h2>
+              <div className='flex space-x-4'>
+                <div className='flex-1 space-y-2'>
+                  <Label>Opacity</Label>
+                  <Slider
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[shadowOpacity]}
+                    onValueChange={(value) => setShadowOpacity(value[0])}
+                    className="slider"
+                    style={{ "--slider-progress": `${shadowOpacity}%` } as React.CSSProperties}
+                  />
+                  <span className="text-sm text-gray-500">{shadowOpacity}%</span>
+                </div>
+                <div className='flex-1 space-y-2'>
+                  <Label>Blur</Label>
                   <Slider
                     min={0}
                     max={20}
                     step={0.1}
-                    value={[shadowDistance]}
-                    onValueChange={(value) => setShadowDistance(value[0])}
+                    value={[shadowBlur]}
+                    onValueChange={(value) => setShadowBlur(value[0])}
                     className="slider"
-                    style={{ "--slider-progress": `${shadowDistance}%` } as React.CSSProperties}
+                    style={{ "--slider-progress": `${shadowBlur}%` } as React.CSSProperties}
                   />
-                  <span className="text-sm text-gray-500">{shadowDistance}% of image size</span>
-                </div>
-                <div className='flex-1 space-y-2'>
-                  <Label>Color</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <div 
-                        className='w-10 h-10 rounded-md cursor-pointer' 
-                        style={{ backgroundColor: shadowColor }}
-                      />
-                    </PopoverTrigger>
-                    <PopoverContent className="popover-content">
-                      <ColorPicker color={shadowColor} onChange={setShadowColor} />
-                    </PopoverContent>
-                  </Popover>
+                  <span className="text-sm text-gray-500">{shadowBlur}% of image size</span>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div 
+                className='flex items-center cursor-pointer'
+                onClick={() => toggleSection('shadow')}
+              >
+                <span className='mr-2'>Additional Settings</span>
+                {expandedSection === 'shadow' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+              {expandedSection === 'shadow' && (
+                <div className='flex space-x-4'>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Distance</Label>
+                    <Slider
+                      min={0}
+                      max={20}
+                      step={0.1}
+                      value={[shadowDistance]}
+                      onValueChange={(value) => setShadowDistance(value[0])}
+                      className="slider"
+                      style={{ "--slider-progress": `${shadowDistance}%` } as React.CSSProperties}
+                    />
+                    <span className="text-sm text-gray-500">{shadowDistance}% of image size</span>
+                  </div>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Color</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <div 
+                          className='w-10 h-10 rounded-md cursor-pointer' 
+                          style={{ backgroundColor: shadowColor }}
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent className="popover-content">
+                        <ColorPicker color={shadowColor} onChange={setShadowColor} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
-          <CardContent className='space-y-4 p-6'>
-            <h2 className='text-xl font-bold mb-4 text-foreground'>Image</h2>
-            <div className='flex space-x-4'>
-              <div className='flex-1 space-y-2'>
-                <Label>Corner Radius</Label>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[imageCornerRadius]}
-                  onValueChange={(value) => setImageCornerRadius(value[0])}
-                  className="slider"
-                  style={{ "--slider-progress": `${imageCornerRadius}%` } as React.CSSProperties}
-                />
-                <span className="text-sm text-gray-500">{imageCornerRadius}% of image size</span>
-              </div>
-              <div className='flex-1 space-y-2'>
-                <Label>Padding</Label>
-                <Slider
-                  min={0}
-                  max={50}
-                  step={1}
-                  value={[imagePadding]}
-                  onValueChange={(value) => setImagePadding(value[0])}
-                  className="slider"
-                  style={{ "--slider-progress": `${imagePadding}%` } as React.CSSProperties}
-                />
-                <span className="text-sm text-gray-500">{imagePadding}%</span>
-              </div>
-            </div>
-            <div 
-              className='flex items-center cursor-pointer'
-              onClick={() => toggleSection('image')}
-            >
-              <span className='mr-2'>Additional Settings</span>
-              {expandedSection === 'image' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </div>
-            {expandedSection === 'image' && (
+          <Card className='hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
+            <CardContent className='space-y-4 p-6'>
+              <h2 className='text-xl font-bold mb-4 text-foreground'>Image</h2>
               <div className='flex space-x-4'>
                 <div className='flex-1 space-y-2'>
-                  <Label>Horizontal Offset</Label>
+                  <Label>Corner Radius</Label>
                   <Slider
-                    min={-50}
-                    max={50}
+                    min={0}
+                    max={100}
                     step={1}
-                    value={[horizontalOffset]}
-                    onValueChange={(value) => setHorizontalOffset(value[0])}
+                    value={[imageCornerRadius]}
+                    onValueChange={(value) => setImageCornerRadius(value[0])}
                     className="slider"
-                    style={{ "--slider-progress": `${horizontalOffset}%` } as React.CSSProperties}
+                    style={{ "--slider-progress": `${imageCornerRadius}%` } as React.CSSProperties}
                   />
-                  <span className="text-sm text-gray-500">{horizontalOffset}% of image width</span>
+                  <span className="text-sm text-gray-500">{imageCornerRadius}% of image size</span>
                 </div>
                 <div className='flex-1 space-y-2'>
-                  <Label>Vertical Offset</Label>
+                  <Label>Padding</Label>
                   <Slider
-                    min={-50}
+                    min={0}
                     max={50}
                     step={1}
-                    value={[verticalOffset]}
-                    onValueChange={(value) => setVerticalOffset(value[0])}
+                    value={[imagePadding]}
+                    onValueChange={(value) => setImagePadding(value[0])}
                     className="slider"
-                    style={{ "--slider-progress": `${verticalOffset}%` } as React.CSSProperties}
+                    style={{ "--slider-progress": `${imagePadding}%` } as React.CSSProperties}
                   />
-                  <span className="text-sm text-gray-500">{verticalOffset}% of image height</span>
+                  <span className="text-sm text-gray-500">{imagePadding}%</span>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              <div 
+                className='flex items-center cursor-pointer'
+                onClick={() => toggleSection('image')}
+              >
+                <span className='mr-2'>Additional Settings</span>
+                {expandedSection === 'image' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+              {expandedSection === 'image' && (
+                <div className='flex space-x-4'>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Horizontal Offset</Label>
+                    <Slider
+                      min={-50}
+                      max={50}
+                      step={1}
+                      value={[horizontalOffset]}
+                      onValueChange={(value) => setHorizontalOffset(value[0])}
+                      className="slider"
+                      style={{ "--slider-progress": `${horizontalOffset}%` } as React.CSSProperties}
+                    />
+                    <span className="text-sm text-gray-500">{horizontalOffset}% of image width</span>
+                  </div>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Vertical Offset</Label>
+                    <Slider
+                      min={-50}
+                      max={50}
+                      step={1}
+                      value={[verticalOffset]}
+                      onValueChange={(value) => setVerticalOffset(value[0])}
+                      className="slider"
+                      style={{ "--slider-progress": `${verticalOffset}%` } as React.CSSProperties}
+                    />
+                    <span className="text-sm text-gray-500">{verticalOffset}% of image height</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-      <div className='hidden md:flex md:w-2/3 flex-col h-full p-4 bg-background'>
-        <Card className='flex-grow flex items-center justify-center overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
-          <div 
-            ref={previewContainerRef} 
-            className="w-full h-full flex items-center justify-center p-4"
-          >
+        <div className='hidden md:flex md:w-2/3 flex-col h-full p-4 bg-background'>
+          <Card className='flex-grow flex items-center justify-center overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-card'>
+            <div 
+              ref={previewContainerRef} 
+              className="w-full h-full flex items-center justify-center p-4"
+            >
+              {imageObject ? (
+                <ImagePreview
+                  image={imageObject}
+                  containerRef={previewContainerRef}
+                  canvasRef={canvasRef}
+                  backgroundSettings={{
+                    type: backgroundType,
+                    color: backgroundColor,
+                    image: backgroundImage,
+                    customImage: customBackgroundImage,
+                    opacity: backgroundOpacity,
+                    cornerRadius: backgroundCornerRadius,
+                  }}
+                  imageSettings={{
+                    cornerRadius: imageCornerRadius,
+                    offsetX: horizontalOffset,
+                    offsetY: verticalOffset,
+                    padding: imagePadding,
+                  }}
+                  shadowSettings={{
+                    color: shadowColor,
+                    opacity: shadowOpacity,
+                    blur: shadowBlur,
+                    distance: shadowDistance,
+                  }}
+                  previewSize={previewSize}
+                  onDownloadableCanvasReady={handleDownloadableCanvasReady}
+                />
+              ) : (
+                <div {...getRootProps()} className={cn(
+                  'text-center cursor-pointer border-2 border-dashed border-gray-300 rounded-lg p-4 w-full h-full flex items-center justify-center',
+                  'hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1'
+                )}>
+                  <input {...getInputProps()} />
+                  {isDragActive ? (
+                    <p>Drop the image here ...</p>
+                  ) : (
+                    <div>
+                      <p className='mb-2'>Upload or Drag & Drop image here</p>
+                      <Button size="sm" className="md:text-base md:px-4 md:py-2">Select Image</Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+          
+          <div className="flex justify-center space-x-4 mt-4">
+            <Button 
+              onClick={handleDownload} 
+              disabled={!downloadableCanvas || !imageObject}
+              className={buttonClass(!!downloadableCanvas && !!imageObject)}
+            >
+              <Download className="mr-2 h-5 w-5" /> Download
+            </Button>
+            <Button 
+              onClick={handleReset}
+              className={buttonClass(true)}
+            >
+              <RefreshCw className="mr-2 h-5 w-5" /> Reset
+            </Button>
+          </div>
+          <div className="hidden md:block text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Created by <a 
+              href="https://mitvaghani.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-gray-700 dark:text-gray-300 hover:underline"
+            >
+              Mit Vaghani
+            </a>
+          </div>
+        </div>
+      </>
+      ) : (
+        <div className='flex flex-col h-full'>
+
+          {/* Image upload and preview area (40% of screen height) */}
+          <div className='h-[40vh] p-4 flex items-center justify-center' ref={previewContainerRef}>
             {imageObject ? (
-              <ImagePreview
-                image={imageObject}
-                containerRef={previewContainerRef}
-                canvasRef={canvasRef}
-                backgroundSettings={{
-                  type: backgroundType,
-                  color: backgroundColor,
-                  image: backgroundImage,
-                  customImage: customBackgroundImage,
-                  opacity: backgroundOpacity,
-                  cornerRadius: backgroundCornerRadius,
-                }}
-                imageSettings={{
-                  cornerRadius: imageCornerRadius,
-                  offsetX: horizontalOffset,
-                  offsetY: verticalOffset,
-                  padding: imagePadding,
-                }}
-                shadowSettings={{
-                  color: shadowColor,
-                  opacity: shadowOpacity,
-                  blur: shadowBlur,
-                  distance: shadowDistance,
-                }}
-                previewSize={previewSize}
-                onDownloadableCanvasReady={handleDownloadableCanvasReady}
-              />
+              <div className='w-full h-full relative'>
+                <ImagePreview
+                  image={imageObject}
+                  containerRef={previewContainerRef}
+                  canvasRef={canvasRef}
+                  backgroundSettings={{
+                    type: backgroundType,
+                    color: backgroundColor,
+                    image: backgroundImage,
+                    customImage: customBackgroundImage,
+                    opacity: backgroundOpacity,
+                    cornerRadius: backgroundCornerRadius,
+                  }}
+                  imageSettings={{
+                    cornerRadius: imageCornerRadius,
+                    offsetX: horizontalOffset,
+                    offsetY: verticalOffset,
+                    padding: imagePadding,
+                  }}
+                  shadowSettings={{
+                    color: shadowColor,
+                    opacity: shadowOpacity,
+                    blur: shadowBlur,
+                    distance: shadowDistance,
+                  }}
+                  previewSize={{ width: window.innerWidth - 32, height: window.innerHeight * 0.4 - 32 }}
+                  onDownloadableCanvasReady={handleDownloadableCanvasReady}
+                />
+              </div>
             ) : (
               <div {...getRootProps()} className={cn(
                 'text-center cursor-pointer border-2 border-dashed border-gray-300 rounded-lg p-4 w-full h-full flex items-center justify-center',
@@ -1107,40 +1239,239 @@ export default function Dashboard() {
                 ) : (
                   <div>
                     <p className='mb-2'>Upload or Drag & Drop image here</p>
-                    <Button size="sm" className="md:text-base md:px-4 md:py-2">Select Image</Button>
+                    <Button size="sm">Select Image</Button>
                   </div>
                 )}
               </div>
             )}
           </div>
-        </Card>
 
-        <div className="flex justify-center space-x-4 mt-4">
-          <Button 
-            onClick={handleDownload} 
-            disabled={!downloadableCanvas || !imageObject}
-            className={buttonClass(!!downloadableCanvas && !!imageObject)}
-          >
-            <Download className="mr-2 h-5 w-5" /> Download
-          </Button>
-          <Button 
-            onClick={handleReset}
-            className={buttonClass(true)}
-          >
-            <RefreshCw className="mr-2 h-5 w-5" /> Reset
-          </Button>
+          {/* Controls area (50% of screen height, scrollable) */}
+          <div className='h-[50vh] overflow-y-auto p-4 space-y-4'>
+            <Card className='bg-card'>
+              <CardContent className='space-y-4 p-6'>
+                <h2 className='text-xl font-bold mb-4 text-foreground'>Background</h2>
+                <BackgroundSelector
+                  type={backgroundType}
+                  color={backgroundColor}
+                  image={backgroundImage}
+                  customImage={customBackgroundImage}
+                  onTypeChange={setBackgroundType}
+                  onColorChange={handleSelectBackground}
+                  onImageChange={setBackgroundImage}
+                  onCustomImageChange={setCustomBackgroundImage}
+                  suggestedColors={suggestedColors}
+                  suggestedImages={suggestedImages}
+                  isOriginalImageUploaded={isOriginalImageUploaded}
+                  imageColors={imageColors}
+                  isApplying={isApplyingBackground}
+                  applyingIndex={applyingBackgroundIndex}
+                />
+                <div className='flex space-x-4'>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Opacity</Label>
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[backgroundOpacity]}
+                      onValueChange={(value) => setBackgroundOpacity(value[0])}
+                      className="slider"
+                      style={{ "--slider-progress": `${backgroundOpacity}%` } as React.CSSProperties}
+                    />
+                    <span className="text-sm text-gray-500">{backgroundOpacity}%</span>
+                  </div>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Corner Radius</Label>
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[backgroundCornerRadius]}
+                      onValueChange={(value) => setBackgroundCornerRadius(value[0])}
+                      className="slider"
+                      style={{ "--slider-progress": `${backgroundCornerRadius}%` } as React.CSSProperties}
+                    />
+                    <span className="text-sm text-gray-500">{backgroundCornerRadius}% of image size</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className='bg-card'>
+              <CardContent className='space-y-4 p-6'>
+                <h2 className='text-xl font-bold mb-4 text-foreground'>Shadow</h2>
+                <div className='flex space-x-4'>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Opacity</Label>
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[shadowOpacity]}
+                      onValueChange={(value) => setShadowOpacity(value[0])}
+                      className="slider"
+                      style={{ "--slider-progress": `${shadowOpacity}%` } as React.CSSProperties}
+                    />
+                    <span className="text-sm text-gray-500">{shadowOpacity}%</span>
+                  </div>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Blur</Label>
+                    <Slider
+                      min={0}
+                      max={20}
+                      step={0.1}
+                      value={[shadowBlur]}
+                      onValueChange={(value) => setShadowBlur(value[0])}
+                      className="slider"
+                      style={{ "--slider-progress": `${shadowBlur}%` } as React.CSSProperties}
+                    />
+                    <span className="text-sm text-gray-500">{shadowBlur}% of image size</span>
+                  </div>
+                </div>
+                <div 
+                  className='flex items-center cursor-pointer'
+                  onClick={() => toggleSection('shadow')}
+                >
+                  <span className='mr-2'>Additional Settings</span>
+                  {expandedSection === 'shadow' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+                {expandedSection === 'shadow' && (
+                  <div className='flex space-x-4'>
+                    <div className='flex-1 space-y-2'>
+                      <Label>Distance</Label>
+                      <Slider
+                        min={0}
+                        max={20}
+                        step={0.1}
+                        value={[shadowDistance]}
+                        onValueChange={(value) => setShadowDistance(value[0])}
+                        className="slider"
+                        style={{ "--slider-progress": `${shadowDistance}%` } as React.CSSProperties}
+                      />
+                      <span className="text-sm text-gray-500">{shadowDistance}% of image size</span>
+                    </div>
+                    <div className='flex-1 space-y-2'>
+                      <Label>Color</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <div 
+                            className='w-10 h-10 rounded-md cursor-pointer' 
+                            style={{ backgroundColor: shadowColor }}
+                          />
+                        </PopoverTrigger>
+                        <PopoverContent className="popover-content">
+                          <ColorPicker color={shadowColor} onChange={setShadowColor} />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className='bg-card'>
+              <CardContent className='space-y-4 p-6'>
+                <h2 className='text-xl font-bold mb-4 text-foreground'>Image</h2>
+                <div className='flex space-x-4'>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Corner Radius</Label>
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[imageCornerRadius]}
+                      onValueChange={(value) => setImageCornerRadius(value[0])}
+                      className="slider"
+                      style={{ "--slider-progress": `${imageCornerRadius}%` } as React.CSSProperties}
+                    />
+                    <span className="text-sm text-gray-500">{imageCornerRadius}% of image size</span>
+                  </div>
+                  <div className='flex-1 space-y-2'>
+                    <Label>Padding</Label>
+                    <Slider
+                      min={0}
+                      max={50}
+                      step={1}
+                      value={[imagePadding]}
+                      onValueChange={(value) => setImagePadding(value[0])}
+                      className="slider"
+                      style={{ "--slider-progress": `${imagePadding}%` } as React.CSSProperties}
+                    />
+                    <span className="text-sm text-gray-500">{imagePadding}%</span>
+                  </div>
+                </div>
+                <div 
+                  className='flex items-center cursor-pointer'
+                  onClick={() => toggleSection('image')}
+                >
+                  <span className='mr-2'>Additional Settings</span>
+                  {expandedSection === 'image' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+                {expandedSection === 'image' && (
+                  <div className='flex space-x-4'>
+                    <div className='flex-1 space-y-2'>
+                      <Label>Horizontal Offset</Label>
+                      <Slider
+                        min={-50}
+                        max={50}
+                        step={1}
+                        value={[horizontalOffset]}
+                        onValueChange={(value) => setHorizontalOffset(value[0])}
+                        className="slider"
+                        style={{ "--slider-progress": `${horizontalOffset}%` } as React.CSSProperties}
+                      />
+                      <span className="text-sm text-gray-500">{horizontalOffset}% of image width</span>
+                    </div>
+                    <div className='flex-1 space-y-2'>
+                      <Label>Vertical Offset</Label>
+                      <Slider
+                        min={-50}
+                        max={50}
+                        step={1}
+                        value={[verticalOffset]}
+                        onValueChange={(value) => setVerticalOffset(value[0])}
+                        className="slider"
+                        style={{ "--slider-progress": `${verticalOffset}%` } as React.CSSProperties}
+                      />
+                      <span className="text-sm text-gray-500">{verticalOffset}% of image height</span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Download and Reset buttons (10% of screen height) */}
+          <div className='h-[10vh] p-4 flex justify-center items-center space-x-4 bg-background'>
+            <div className="flex justify-center space-x-4 mt-4">
+              <Button 
+                onClick={handleDownload} 
+                disabled={!downloadableCanvas || !imageObject}
+                className={buttonClass(!!downloadableCanvas && !!imageObject)}
+              >
+                <Download className="mr-2 h-5 w-5" /> Download
+              </Button>
+              <Button 
+                onClick={handleReset}
+                className={buttonClass(true)}
+              >
+                <RefreshCw className="mr-2 h-5 w-5" /> Reset
+              </Button>
+            </div>
+            <div className="hidden md:block text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+              Created by <a 
+                href="https://mitvaghani.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-gray-700 dark:text-gray-300 hover:underline"
+              >
+                Mit Vaghani
+              </a>
+            </div>
+          </div>
         </div>
-        <div className="hidden md:block text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
-          Created by <a 
-            href="https://mitvaghani.com" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-gray-700 dark:text-gray-300 hover:underline"
-          >
-            Mit Vaghani
-          </a>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

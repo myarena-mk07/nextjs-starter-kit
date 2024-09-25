@@ -28,6 +28,10 @@ const generateFreeformGradient = (colors: string[], numPoints: number): ColorPoi
 };
 
 const renderFreeformGradient = (ctx: CanvasRenderingContext2D, width: number, height: number, points: ColorPoint[]) => {
+  // Ensure width and height are valid numbers and at least 1
+  width = Math.max(1, Math.floor(width));
+  height = Math.max(1, Math.floor(height));
+
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
 
@@ -158,7 +162,7 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-2 sm:grid-cols-5 md:grid-cols-5">
         <AnimatePresence>
           {backgrounds.map((background, index) => (
             <motion.div
