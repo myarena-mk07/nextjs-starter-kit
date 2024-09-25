@@ -176,10 +176,11 @@ const applyImageEffects = (
       ctx.drawImage(tempCanvas, backgroundX, backgroundY, backgroundWidth, backgroundHeight);
     }
   } else if (backgroundSettings.type === 'gradient' && typeof backgroundSettings.color === 'string') {
-    const gradient = ctx.createLinearGradient(backgroundX, backgroundY, backgroundX + backgroundWidth, backgroundY + backgroundHeight);
+    // Always create a horizontal gradient
+    const gradient = ctx.createLinearGradient(backgroundX, 0, backgroundX + backgroundWidth, 0);
     const gradientMatch = backgroundSettings.color.match(/linear-gradient\((.*?)\)/);
     if (gradientMatch) {
-      const [angle, ...colorStops] = gradientMatch[1].split(',').map(s => s.trim());
+      const colorStops = gradientMatch[1].split(',').map(s => s.trim()).slice(1); // Remove angle, keep colors
       colorStops.forEach((stop, index) => {
         const [color, position] = stop.split(' ');
         gradient.addColorStop(position ? parseFloat(position) / 100 : index / (colorStops.length - 1), color);
@@ -336,7 +337,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   );
 };
 
-const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onColorChange, onImageChange, onCustomImageChange, suggestedColors, suggestedImages, isOriginalImageUploaded, imageColors, isApplying, applyingIndex }: {
+const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onColorChange, onImageChange, onCustomImageChange, suggestedColors, suggestedImages, isOriginalImageUploaded, imageColors, isApplying, applyingIndex, isInitialOrReset }: {
   type: BackgroundType;
   color: string | ColorPoint[];
   image: string | null;
@@ -351,6 +352,7 @@ const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onC
   imageColors: string[];
   isApplying: boolean;
   applyingIndex: number | null;
+  isInitialOrReset: boolean;
 }) => {
   const [isGradientOpen, setIsGradientOpen] = useState(false);
   const [isImageOpen, setIsImageOpen] = useState(false);
@@ -404,54 +406,55 @@ const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onC
           onSelectBackground={handleSelectBackground}
           isApplying={isApplying}
           applyingIndex={applyingIndex}
+          isInitialOrReset={isInitialOrReset}
         />
       </div>
 
       {/* Default gradients and images */}
       <div>
         <h3 className="text-lg font-semibold mb-2">Default Backgrounds</h3>
-        <div className="flex space-x-4">
-          <Popover open={isGradientOpen} onOpenChange={setIsGradientOpen}>
-            <PopoverTrigger asChild>
-              <div 
-                className='w-20 h-20 rounded-md cursor-pointer' 
-                style={{ background: type === 'gradient' && typeof color === 'string' ? color : suggestedColors[0] }}
-              />
-            </PopoverTrigger>
-            <PopoverContent className="w-64 bg-background text-foreground border border-border shadow-md rounded-md p-2">
-              <div className="grid grid-cols-4 gap-2">
-                {suggestedColors.map((gradient, index) => (
-                  <div
-                    key={index}
-                    className="w-12 h-12 rounded-md cursor-pointer"
-                    style={{ background: gradient }}
-                    onClick={() => handleGradientSelect(gradient)}
-                  />
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+          <div className="flex space-x-4">
+            <Popover open={isGradientOpen} onOpenChange={setIsGradientOpen}>
+              <PopoverTrigger asChild>
+                <div 
+                  className='w-20 h-20 rounded-md cursor-pointer' 
+                  style={{ background: type === 'gradient' && typeof color === 'string' ? color : suggestedColors[0] }}
+                />
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] sm:w-[350px] md:w-[400px] bg-popover text-popover-foreground border border-border shadow-md rounded-md p-2">
+                <div className="grid grid-cols-5 gap-2">
+                  {suggestedColors.slice(0, 15).map((gradient, index) => (
+                    <div
+                      key={index}
+                      className="aspect-square rounded-md cursor-pointer"
+                      style={{ background: gradient }}
+                      onClick={() => handleGradientSelect(gradient)}
+                    />
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
 
-          <Popover open={isImageOpen} onOpenChange={setIsImageOpen}>
-            <PopoverTrigger asChild>
-              <div 
-                className='w-20 h-20 rounded-md cursor-pointer bg-cover bg-center' 
-                style={{ backgroundImage: type === 'image' ? `url(${image})` : `url(${suggestedImages[0]})` }}
-              />
-            </PopoverTrigger>
-            <PopoverContent className="w-64 bg-background text-foreground border border-border shadow-md rounded-md p-2">
-              <div className="grid grid-cols-3 gap-2">
-                {suggestedImages.map((img, index) => (
-                  <div
-                    key={index}
-                    className="w-16 h-16 rounded-md cursor-pointer bg-cover bg-center"
-                    style={{ backgroundImage: `url(${img})` }}
-                    onClick={() => handleImageSelect(img)}
-                  />
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+            <Popover open={isImageOpen} onOpenChange={setIsImageOpen}>
+              <PopoverTrigger asChild>
+                <div 
+                  className='w-20 h-20 rounded-md cursor-pointer bg-cover bg-center' 
+                  style={{ backgroundImage: type === 'image' ? `url(${image})` : `url(${suggestedImages[0]})` }}
+                />
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] sm:w-[350px] md:w-[400px] bg-popover text-popover-foreground border border-border shadow-md rounded-md p-2">
+                <div className="grid grid-cols-5 gap-2">
+                  {suggestedImages.slice(0, 15).map((img, index) => (
+                    <div
+                      key={index}
+                      className="aspect-square rounded-md cursor-pointer bg-cover bg-center"
+                      style={{ backgroundImage: `url(${img})` }}
+                      onClick={() => handleImageSelect(img)}
+                    />
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
 
           <div className="relative group">
             <input
@@ -552,6 +555,7 @@ export default function Dashboard() {
 
   const [isApplyingBackground, setIsApplyingBackground] = useState(false);
   const [applyingBackgroundIndex, setApplyingBackgroundIndex] = useState<number | null>(null);
+  const [isInitialOrReset, setIsInitialOrReset] = useState(true);
 
   const generateBackgrounds = (previewWidth: number, previewHeight: number) => {
     const generateFreeformGradient = (colors: string[], numColors: number, width: number, height: number) => {
@@ -687,6 +691,7 @@ export default function Dashboard() {
           setBackgroundCornerRadius(5)
           setImageCornerRadius(5)
           setIsOriginalImageUploaded(true);
+          setIsInitialOrReset(false);
           
           // Force a redraw of the preview
           if (previewContainerRef.current && canvasRef.current) {
@@ -793,6 +798,7 @@ export default function Dashboard() {
       'linear-gradient(to left, #b9fbc0, #a3c4f3)',
       'linear-gradient(to left, #ffd488, #ff9b7f)',
     ]);
+    setIsInitialOrReset(true);
   }
 
   const handleCustomBackgroundChange = (newCustomImage: string | null) => {
@@ -937,6 +943,7 @@ export default function Dashboard() {
                 imageColors={imageColors}
                 isApplying={isApplyingBackground}
                 applyingIndex={applyingBackgroundIndex}
+                isInitialOrReset={isInitialOrReset}
               />
               <div className='flex space-x-4'>
                 <div className='flex-1 space-y-2'>
@@ -1266,6 +1273,7 @@ export default function Dashboard() {
                   imageColors={imageColors}
                   isApplying={isApplyingBackground}
                   applyingIndex={applyingBackgroundIndex}
+                  isInitialOrReset={isInitialOrReset}
                 />
                 <div className='flex space-x-4'>
                   <div className='flex-1 space-y-2'>
@@ -1443,23 +1451,23 @@ export default function Dashboard() {
           </div>
 
           {/* Download and Reset buttons (10% of screen height) */}
-          <div className='h-[10vh] p-4 flex justify-center items-center space-x-4 bg-background'>
-            <div className="flex justify-center space-x-4 mt-4">
+          <div className='h-[10vh] p-4 flex flex-col justify-center items-center space-y-3 bg-background'>
+            <div className="flex justify-center space-x-4">
               <Button 
                 onClick={handleDownload} 
                 disabled={!downloadableCanvas || !imageObject}
-                className={buttonClass(!!downloadableCanvas && !!imageObject)}
+                className={`${buttonClass(!!downloadableCanvas && !!imageObject)} w-40 text-m`}
               >
-                <Download className="mr-2 h-5 w-5" /> Download
+                <Download className="mr-2 h-5 w-7" /> Download
               </Button>
               <Button 
                 onClick={handleReset}
-                className={buttonClass(true)}
+                className={`${buttonClass(true)} w-40 text-m`}
               >
-                <RefreshCw className="mr-2 h-5 w-5" /> Reset
+                <RefreshCw className="mr-2 h-5 w-7" /> Reset
               </Button>
             </div>
-            <div className="hidden md:block text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="text-center text-xs text-gray-500 dark:text-gray-400">
               Created by <a 
                 href="https://mitvaghani.com" 
                 target="_blank" 

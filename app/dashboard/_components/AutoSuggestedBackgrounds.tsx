@@ -8,6 +8,7 @@ interface AutoSuggestedBackgroundsProps {
   onSelectBackground: (background: string | ColorPoint[], index: number) => Promise<void>;
   isApplying: boolean;
   applyingIndex: number | null;
+  isInitialOrReset: boolean;
 }
 
 interface ColorPoint {
@@ -123,15 +124,20 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
   imageColors, 
   onSelectBackground, 
   isApplying,
-  applyingIndex
+  applyingIndex,
+  isInitialOrReset
 }) => {
   const [backgrounds, setBackgrounds] = useState<(string | ColorPoint[])[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingBackgrounds, setLoadingBackgrounds] = useState<boolean[]>(new Array(10).fill(false));
 
   useEffect(() => {
-    generateBackgroundsAsync(imageColors);
-  }, [imageColors]);
+    if (isInitialOrReset || imageColors.length === 0) {
+      setBackgrounds(new Array(10).fill(''));
+    } else {
+      generateBackgroundsAsync(imageColors);
+    }
+  }, [imageColors, isInitialOrReset]);
 
   const generateBackgroundsAsync = async (colors: string[]) => {
     setIsGenerating(true);
@@ -155,7 +161,7 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
   };
 
   const handleBackgroundClick = (background: string | ColorPoint[], index: number) => {
-    if (!isApplying) {
+    if (!isApplying && background !== '') {
       onSelectBackground(background, index);
     }
   };
@@ -175,34 +181,39 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
               onClick={() => handleBackgroundClick(background, index)}
             >
               <div className={`w-full h-full ${(isApplying && applyingIndex === index) || loadingBackgrounds[index] ? 'opacity-30' : ''}`}>
-                {Array.isArray(background) ? (
-                  <canvas
-                    className="w-full h-full"
-                    ref={canvas => {
-                      if (canvas) {
-                        canvas.width = canvas.offsetWidth;
-                        canvas.height = canvas.offsetHeight;
-                        const ctx = canvas.getContext('2d');
-                        if (ctx) renderFreeformGradient(ctx, canvas.width, canvas.height, background);
-                      }
-                    }}
-                  />
+                {background ? (
+                  Array.isArray(background) ? (
+                    <canvas
+                      className="w-full h-full"
+                      ref={canvas => {
+                        if (canvas) {
+                          canvas.width = canvas.offsetWidth;
+                          canvas.height = canvas.offsetHeight;
+                          const ctx = canvas.getContext('2d');
+                          if (ctx) renderFreeformGradient(ctx, canvas.width, canvas.height, background);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="w-full h-full"
+                      style={{ background: background }}
+                    />
+                  )
                 ) : (
-                  <div
-                    className="w-full h-full"
-                    style={{ background: background }}
-                  />
+                  <div className="w-full h-full flex items-center justify-center">
+                    {isInitialOrReset ? (
+                      <span className="text-xs text-gray-400 text-center">No Image</span>
+                    ) : (
+                      <Loader2 className="animate-spin text-primary" size={24} />
+                    )}
+                  </div>
                 )}
               </div>
-              {((isApplying && applyingIndex === index) || loadingBackgrounds[index]) && (
+              {((isApplying && applyingIndex === index) || (!isInitialOrReset && loadingBackgrounds[index])) && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Loader2 className="animate-spin text-primary" size={24} />
                 </div>
-              )}
-              {!background && (
-                <span className="text-[8px] text-gray-400 text-center absolute">
-                  No Image Uploaded
-                </span>
               )}
             </motion.div>
           ))}
