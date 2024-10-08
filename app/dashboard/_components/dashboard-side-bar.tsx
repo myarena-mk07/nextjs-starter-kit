@@ -9,7 +9,7 @@ import {
   Settings
 } from "lucide-react"
 import Link from 'next/link'
-import { usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation'
 import { FaTasks } from 'react-icons/fa'
 import { useState} from 'react';
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,6 @@ export default function Dashboard() {
   const [backgroundOpacity, setBackgroundOpacity] = useState(100)
   const [suggestedColors, setSuggestedColors] = useState<string[]>([])
   const pathname = usePathname();
-
   // useEffect(() => {
   //   if (imageData) {
       // Function to extract colors from the image

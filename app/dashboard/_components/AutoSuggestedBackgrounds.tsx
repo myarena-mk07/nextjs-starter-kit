@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -130,6 +130,7 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
   const [backgrounds, setBackgrounds] = useState<(string | ColorPoint[])[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingBackgrounds, setLoadingBackgrounds] = useState<boolean[]>(new Array(10).fill(false));
+  const [localApplyingIndex, setLocalApplyingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (isInitialOrReset || imageColors.length === 0) {
@@ -160,11 +161,22 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
     generateBackgroundsAsync(imageColors);
   };
 
-  const handleBackgroundClick = (background: string | ColorPoint[], index: number) => {
-    if (!isApplying && background !== '') {
-      onSelectBackground(background, index);
+  const handleBackgroundClick = useCallback(async (background: string | ColorPoint[], index: number) => {
+    if (!isApplying && background !== '' && localApplyingIndex === null) {
+      setLocalApplyingIndex(index);
+      try {
+        await onSelectBackground(background, index);
+      } finally {
+        setLocalApplyingIndex(null);
+      }
     }
-  };
+  }, [isApplying, localApplyingIndex, onSelectBackground]);
+
+  useEffect(() => {
+    if (!isApplying) {
+      setLocalApplyingIndex(null);
+    }
+  }, [isApplying]);
 
   return (
     <div className="space-y-4">
@@ -180,7 +192,7 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
               className="aspect-square rounded-md cursor-pointer border border-gray-300 flex items-center justify-center overflow-hidden relative"
               onClick={() => handleBackgroundClick(background, index)}
             >
-              <div className={`w-full h-full ${(isApplying && applyingIndex === index) || loadingBackgrounds[index] ? 'opacity-30' : ''}`}>
+              <div className={`w-full h-full ${(localApplyingIndex === index || loadingBackgrounds[index]) ? 'opacity-30' : ''}`}>
                 {background ? (
                   Array.isArray(background) ? (
                     <canvas
@@ -210,7 +222,7 @@ export const AutoSuggestedBackgrounds: React.FC<AutoSuggestedBackgroundsProps> =
                   </div>
                 )}
               </div>
-              {((isApplying && applyingIndex === index) || (!isInitialOrReset && loadingBackgrounds[index])) && (
+              {(localApplyingIndex === index || (!isInitialOrReset && loadingBackgrounds[index])) && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Loader2 className="animate-spin text-primary" size={24} />
                 </div>

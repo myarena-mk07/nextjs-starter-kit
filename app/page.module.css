@@ -1,0 +1,876 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+
+.landingPage {
+  --bg-color: #000;
+  --btn-color: #fdfdfd;
+  --btn-bg: #7e22ce;
+  --primary-text-color: #7e22ce;
+  --header-link-hover: #7e22ce;
+  --input-hover-bd-color: #7e22ce;
+
+  background-color: var(--bg-color);
+  color: var(--btn-color);
+  font-family: "Ubuntu", sans-serif;
+}
+
+.heroImgBgGrad {
+  position: absolute;
+  left: 20%;
+  top: 1.25rem;
+  height: 200px;
+  width: 200px;
+  background: linear-gradient(90deg, #7e22ce91 8%, #625aafae 31%, #7badbbbc 76%, #54d2d0ca 89%);
+  filter: blur(50px);
+  opacity: 0.5;
+}
+
+/* Add this for scroll effect */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 40px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.fadeInUp {
+  animation: fadeInUp 1s ease-out;
+}
+
+.header {
+  position: absolute;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  height: 60px;
+  width: 100%;
+  background-color: transparent;
+  padding: 3% 5%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logoContainer {
+  height: 60px;
+  width: 60px;
+  padding: 2px;
+}
+
+.logo {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+
+.collapsibleHeader {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  background-color: inherit;
+  place-content: center;
+  overflow: hidden;
+  transition: width 0.3s ease;
+}
+
+.animatedCollapse {
+  transition: width 0.3s ease;
+}
+
+.headerLinks {
+  display: flex;
+  align-items: center;
+  min-width: fit-content;
+}
+
+.headerLink {
+  border-radius: 5px;
+  padding: 5px 10px;
+  transition: background-color 0.5s, color 0.5s;
+  color: #b1b1b1;
+}
+
+.headerLink:hover {
+  color: #ffffff;
+}
+
+.getStartedButton {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  color: black;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  transition: transform 0.9s;
+}
+
+.getStartedButton:hover {
+  transform: translateX(8px);
+}
+
+.collapseButton {
+  display: none;
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.dashboardContainer {
+  position: relative;
+  width: 100%;
+  max-width: 2000px;
+  aspect-ratio: 16 / 9;
+  perspective: 8500px;
+}
+
+.dashboard {
+  width: 100%;
+  max-width: 2000px;
+  aspect-ratio: 16 / 9;
+  transform: perspective(2000px) rotateX(10deg) scale(0.9);
+  transform-origin: bottom;
+  transition: transform 0.7s ease;
+}
+
+.dashboardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 0 50px 10px rgba(126, 34, 206, 0.3);
+}
+
+.heroSection {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  background-color: #000;
+  overflow: hidden;
+}
+
+.heroSection::after {
+  content: '';
+  position: absolute;
+  top: 47%;
+  left: -3%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(180, 238, 245, 0.3) 0%, rgba(0, 0, 0, 0) 70%);
+  background: radial-gradient(circle, rgba(180, 238, 245, 0.3) 0%, rgba(0, 0, 0, 0) 70%);
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.heroContent {
+  text-align: center;
+  max-width: 800px;
+  margin-bottom: 2rem;
+}
+
+.gradientText {
+  font-size: 4rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ffffff 0%, #a0a0a0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
+}
+
+.heroParagraph {
+  color: #a0a0a0;
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.heroButtons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.primaryBtn {
+  background-color: #7e22ce;
+  color: white;
+}
+
+.secondaryBtn {
+  background-color: transparent;
+  color: white;
+  border: 1px solid white;
+}
+
+.arrowIcon {
+  margin-left: 0.5rem;
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.trustedBrands {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: 100vw;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+.sectionTitle {
+  font-size: 2.25rem;
+  font-weight: 500;
+  color: #e5e7eb;
+  margin-bottom: 2rem;
+}
+
+.carouselContainer {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+  max-width: 800px;
+}
+
+.carousel {
+  display: inline-block;
+  animation: scroll 20s linear infinite;
+}
+
+.carouselImg {
+  display: inline-block;
+  height: 30px;
+  width: 150px;
+  margin: 0 20px;
+}
+
+.brandLogo {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  transition: filter 0.3s;
+  filter: grayscale(100%);
+}
+
+.brandLogo:hover {
+  filter: grayscale(0%);
+}
+
+.keyBenefits, .features, .insights, .testimonials, .pricing, .articles, .faq, .newsletter {
+  padding: 4rem 5%;
+}
+
+.benefitsContainer, .featuresContainer, .testimonialsContainer, .pricingContainer, .articlesContainer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.benefitCard, .featureCard, .testimonialCard, .pricingCard, .articleCard {
+  flex: 1 1 300px;
+  max-width: 350px;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  background-color: #111;
+  transition: transform 0.9s ease;
+}
+
+.benefitCard:hover, .featureCard:hover, .testimonialCard:hover, .pricingCard:hover, .articleCard:hover {
+  transform: translateY(-5px);
+}
+
+.borderGradient {
+  background: linear-gradient(180deg, rgba(219,215,213,1) 35%, rgba(214,211,233,0) 71%);
+  padding: 2px;
+  border-radius: 10px;
+}
+
+.benefitIconContainer, .featureIcon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80px;
+  width: 80px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background-color: #222;
+}
+
+.benefitTitle, .featureTitle, .insightFeatureTitle {
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.benefitDescription, .featureDescription, .insightFeatureDescription {
+  color: #9ca3af;
+}
+
+.insightsContent {
+  display: flex;
+  align-items: center;
+  gap: 5%;
+}
+
+.insightsImage {
+  flex: 1;
+  max-width: 50%;
+}
+
+.insightsImg {
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.insightsText {
+  flex: 1;
+}
+
+.insightsTitle {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.testimonialText {
+  margin-bottom: 1rem;
+}
+
+.testimonialAuthor {
+  display: flex;
+  align-items: center;
+}
+
+.authorAvatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 1rem;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.authorName {
+  font-weight: 600;
+}
+
+.authorPosition {
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.pricingTitle {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.price {
+  color: var(--primary-text-color);
+}
+
+.period {
+  font-size: 1rem;
+  color: #9ca3af;
+}
+
+.pricingDescription {
+  margin-bottom: 1rem;
+}
+
+.pricingDivider {
+  margin: 1rem 0;
+  border-color: #333;
+}
+
+.featureList {
+  margin-bottom: 1.5rem;
+}
+
+.featureItem {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.checkIcon {
+  margin-right: 0.5rem;
+  color: #10b981;
+}
+
+.articleImage {
+  height: 200px;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.articleImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.9s ease;
+}
+
+.articleCard:hover .articleImg {
+  transform: scale(1.05);
+}
+
+.articleTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.articleDescription {
+  color: #9ca3af;
+  margin-bottom: 1rem;
+}
+
+.learnMore {
+  display: flex;
+  align-items: center;
+  color: var(--primary-text-color);
+}
+
+.faqContainer {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.faqItem {
+  border: 1px solid #333;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.faqQuestion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.faqIcon {
+  transition: transform 0.9s ease;
+}
+
+.faqItem[open] .faqIcon {
+  transform: rotate(180deg);
+}
+
+.faqAnswer {
+  padding: 1rem;
+  padding-top: 0;
+  color: #9ca3af;
+}
+
+.contactCta {
+  text-align: center;
+  margin-top: 3rem;
+}
+
+.ctaText {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.ctaBtn {
+  display: inline-block;
+}
+
+.newsletter {
+  background-color: #111;
+}
+
+.newsletterContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.newsletterTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.newsletterForm {
+  display: flex;
+  gap: 1rem;
+}
+
+.newsletterInput {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid #333;
+  background-color: #222;
+  color: white;
+}
+
+.footer {
+  background-color: #111;
+  padding: 4rem 5%;
+}
+
+.footerContent {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.footerBrand {
+  flex: 1;
+  min-width: 200px;
+}
+
+.footerLogo {
+  margin-bottom: 1rem;
+}
+
+.footerAddress {
+  margin-bottom: 1rem;
+  color: #9ca3af;
+}
+
+.footerSocial {
+  margin-top: 1rem;
+}
+
+.socialTitle {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.socialIcons {
+  display: flex;
+  gap: 1rem;
+}
+
+.socialIcon {
+  color: #9ca3af;
+  transition: color 0.3s ease;
+}
+
+.socialIcon:hover {
+  color: white;
+}
+
+.footerLinks {
+  flex: 2;
+  display: flex;
+  justify-content: space-around;
+}
+
+.footerLinkColumn {
+  min-width: 120px;
+}
+
+.footerLinkTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.footerLinkList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.footerLink {
+  color: #9ca3af;
+  transition: color 0.3s;
+}
+
+.footerLink:hover {
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .header {
+    padding: 0 2%;
+  }
+
+  .collapsibleHeader {
+    position: fixed;
+    right: 0;
+    top: 0;
+    flex-direction: column;
+    height: 100vh;
+    width: 60vw;
+    justify-content: flex-start;
+    padding: 0 2%;
+    background-color: #040404;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    transform: translateX(100%);
+    transition: transform 0.9s ease;
+  }
+
+  .collapsibleHeader.expanded {
+    transform: translateX(0);
+  }
+
+  .headerLinks {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 2rem;
+  }
+
+  .getStartedButton {
+    margin-top: 2rem;
+  }
+
+  .collapseButton {
+    display: block;
+  }
+
+  .heroContent {
+    text-align: center;
+  }
+
+  .gradientText {
+    font-size: 2.5rem;
+    line-height: 1.2;
+  }
+
+  .heroParagraph {
+    max-width: 100%;
+  }
+
+  .dashboard {
+    max-width: 100%;
+  }
+
+  .insightsContent {
+    flex-direction: column;
+  }
+
+  .insightsImage {
+    max-width: 100%;
+    margin-bottom: 2rem;
+  }
+
+  .newsletterContent {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .newsletterForm {
+    margin-top: 1rem;
+  }
+
+  .footerContent {
+    flex-direction: column;
+  }
+
+  .footerLinks {
+    flex-direction: column;
+    gap: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .heroButtons {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .carouselContainer {
+    max-width: 100%;
+  }
+
+  .benefitCard, .featureCard, .testimonialCard, .pricingCard, .articleCard {
+    max-width: 100%;
+  }
+
+  .pricingContainer {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .pricingCard {
+    width: 100%;
+    max-width: 350px;
+  }
+
+  .newsletterForm {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .newsletterInput, .newsletterBtn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .gradientText {
+    font-size: 2rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.75rem;
+  }
+
+  .heroImgBgGrad {
+    display: none;
+  }
+
+  .testimonialCard {
+    text-align: center;
+  }
+
+  .testimonialAuthor {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .authorAvatar {
+    margin-right: 0;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.fadeIn {
+  animation: fadeIn 1s ease-out;
+}
+
+.slideUp {
+  animation: slideUp 0.5s ease-out;
+}
+
+/* Utility Classes */
+.textCenter { text-align: center; }
+.marginTop1 { margin-top: 1rem; }
+.marginTop2 { margin-top: 2rem; }
+.marginBottom1 { margin-bottom: 1rem; }
+.marginBottom2 { margin-bottom: 2rem; }
+.padding1 { padding: 1rem; }
+.padding2 { padding: 2rem; }
+
+/* Additional Custom Styles */
+.customScrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.customScrollbar::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.customScrollbar::-webkit-scrollbar-thumb {
+  background-color: #333;
+  border-radius: 20px;
+  border: 3px solid #1a1a1a;
+}
+
+.customScrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #555;
+}
+
+/* Accessibility */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus styles for keyboard navigation */
+.landingPage a:focus,
+.landingPage button:focus,
+.landingPage input:focus,
+.landingPage select:focus,
+.landingPage textarea:focus {
+  outline: 0px solid var(--primary-text-color);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .noPrint {
+    display: none;
+  }
+
+  .landingPage {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+  }
+
+  .landingPage a {
+    color: #000;
+    text-decoration: underline;
+  }
+
+  .pageBreakBefore {
+    page-break-before: always;
+  }
+
+  .pageBreakAfter {
+    page-break-after: always;
+  }
+}

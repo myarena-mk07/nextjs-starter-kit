@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
@@ -8,16 +8,12 @@ import { Button } from '@/components/ui/button'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { useDropzone } from 'react-dropzone'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ChevronDown, ChevronUp, Download, RefreshCw, Edit2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, RefreshCw } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from '@/hooks/use-media-query'
-import Image from 'next/image'
-import { motion, AnimatePresence } from 'framer-motion';
-import { AutoSuggestedBackgrounds } from './_components/AutoSuggestedBackgrounds';
-import ColorThief from 'colorthief';
-import { Loader2 } from 'lucide-react';
-import NextImage, { StaticImageData } from 'next/image'
+import { AutoSuggestedBackgrounds } from './_components/AutoSuggestedBackgrounds'
+import ColorThief from 'colorthief'
 
 // Update the BackgroundType
 type BackgroundType = 'gradient' | 'image' | 'custom' | 'freeform';
@@ -260,6 +256,7 @@ interface ImagePreviewProps {
   image: HTMLImageElement;
   containerRef: React.RefObject<HTMLDivElement>;
   canvasRef: React.RefObject<HTMLCanvasElement>;
+  downloadCanvasRef: React.RefObject<HTMLCanvasElement>;
   backgroundSettings: {
     type: BackgroundType;
     color: string | ColorPoint[];
@@ -282,6 +279,7 @@ interface ImagePreviewProps {
   };
   previewSize: { width: number; height: number };
   onDownloadableCanvasReady: (canvas: HTMLCanvasElement) => void;
+  originalImageDimensions: { width: number; height: number };
 }
 
 // Add this new ImagePreview component
@@ -289,51 +287,81 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   image,
   containerRef,
   canvasRef,
+  downloadCanvasRef,
   backgroundSettings,
   imageSettings,
   shadowSettings,
   previewSize,
-  onDownloadableCanvasReady
+  onDownloadableCanvasReady,
+  originalImageDimensions
 }) => {
-  const updateCanvas = useCallback(() => {
-    if (canvasRef.current && containerRef.current) {
-      const canvas = canvasRef.current;
+  const updateCanvases = useCallback(() => {
+    if (canvasRef.current && containerRef.current && downloadCanvasRef.current) {
+      const previewCanvas = canvasRef.current;
+      const downloadCanvas = downloadCanvasRef.current;
       const container = containerRef.current;
       const rect = container.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
       
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
+      // Set preview canvas size
+      previewCanvas.width = rect.width;
+      previewCanvas.height = rect.height;
+      
+      // Set download canvas size to original image dimensions
+      downloadCanvas.width = originalImageDimensions.width;
+      downloadCanvas.height = originalImageDimensions.height;
+      
+      const previewCtx = previewCanvas.getContext('2d');
+      const downloadCtx = downloadCanvas.getContext('2d');
+      
+      if (previewCtx && downloadCtx) {
+        // Apply effects to preview canvas
         applyImageEffects(
-          ctx,
-          canvas.width,
-          canvas.height,
+          previewCtx,
+          previewCanvas.width,
+          previewCanvas.height,
           image,
           backgroundSettings,
           imageSettings,
           shadowSettings
         );
-        onDownloadableCanvasReady(canvas);
+        
+        // Apply effects to download canvas
+        applyImageEffects(
+          downloadCtx,
+          downloadCanvas.width,
+          downloadCanvas.height,
+          image,
+          backgroundSettings,
+          imageSettings,
+          shadowSettings
+        );
+        
+        onDownloadableCanvasReady(downloadCanvas);
       }
     }
-  }, [image, backgroundSettings, imageSettings, shadowSettings, onDownloadableCanvasReady]);
+  }, [image, backgroundSettings, imageSettings, shadowSettings, onDownloadableCanvasReady, originalImageDimensions]);
 
   useEffect(() => {
-    updateCanvas();
-    window.addEventListener('resize', updateCanvas);
-    return () => window.removeEventListener('resize', updateCanvas);
-  }, [updateCanvas]);
+    updateCanvases();
+    window.addEventListener('resize', updateCanvases);
+    return () => window.removeEventListener('resize', updateCanvases);
+  }, [updateCanvases]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        objectFit: 'contain'
-      }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain'
+        }}
+      />
+      <canvas
+        ref={downloadCanvasRef}
+        style={{ display: 'none' }}
+      />
+    </>
   );
 };
 
@@ -406,6 +434,7 @@ const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onC
           onSelectBackground={handleSelectBackground}
           isApplying={isApplying}
           applyingIndex={applyingIndex}
+          
           isInitialOrReset={isInitialOrReset}
         />
       </div>
@@ -507,7 +536,6 @@ export default function Dashboard() {
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 })
   const previewContainerRef = useRef<HTMLDivElement>(null)
   const [imageObject, setImageObject] = useState<HTMLImageElement | null>(null)
-  const [downloadableCanvas, setDownloadableCanvas] = useState<HTMLCanvasElement | null>(null);
   const [suggestedColors, setSuggestedColors] = useState<string[]>([
     'linear-gradient(to left, #f2b8ff, #e9e4fe)',
     'linear-gradient(to left, #c6ffb1, #b4eef5)',
@@ -526,6 +554,7 @@ export default function Dashboard() {
   ]);
 
   const isDesktop = useMediaQuery("(min-width: 768px)")
+  
 
   const [mobilePreviewSize, setMobilePreviewSize] = useState({ width: 0, height: 0 });
 
@@ -556,6 +585,9 @@ export default function Dashboard() {
   const [isApplyingBackground, setIsApplyingBackground] = useState(false);
   const [applyingBackgroundIndex, setApplyingBackgroundIndex] = useState<number | null>(null);
   const [isInitialOrReset, setIsInitialOrReset] = useState(true);
+  const [downloadableCanvas, setDownloadableCanvas] = useState<HTMLCanvasElement | null>(null);
+  const downloadCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [originalImageDimensions, setOriginalImageDimensions] = useState({ width: 0, height: 0 });
 
   const generateBackgrounds = (previewWidth: number, previewHeight: number) => {
     const generateFreeformGradient = (colors: string[], numColors: number, width: number, height: number) => {
@@ -679,8 +711,9 @@ export default function Dashboard() {
       reader.onload = (e) => {
         const img = new window.Image();
         img.onload = () => {
-          setImageObject(img)
-          setUploadedImage(img.src)
+          setImageObject(img);
+          setUploadedImage(img.src);
+          setOriginalImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
           setBackgroundColor('linear-gradient(to left, #c6ffb1, #b4eef5)')
           setBackgroundOpacity(100)
           setShadowOpacity(60)
@@ -759,6 +792,11 @@ export default function Dashboard() {
       link.click();
     } else {
       console.error('Downloadable canvas is not ready');
+      toast({
+        title: "Download failed",
+        description: "The image is not ready for download. Please try again.",
+        variant: "destructive",
+      });
     }
   }, [downloadableCanvas]);
 
@@ -846,58 +884,60 @@ export default function Dashboard() {
   const handleSelectBackground = async (background: string | ColorPoint[], index: number) => {
     setIsApplyingBackground(true);
     setApplyingBackgroundIndex(index);
-
-    if (Array.isArray(background)) {
-      setBackgroundType('freeform');
+  
+    // Wrap the background application in a setTimeout to ensure the UI updates before the potentially heavy operation
+    setTimeout(async () => {
+      if (Array.isArray(background)) {
+        setBackgroundType('freeform');
+      } else {
+        setBackgroundType('gradient');
+      }
       setBackgroundColor(background);
-    } else {
-      setBackgroundType('gradient');
-      setBackgroundColor(background);
-    }
-    
-    // Force an update of the preview
-    if (imageObject && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        try {
-          await new Promise<void>(resolve => {
-            requestAnimationFrame(async () => {
-              await applyImageEffects(
-                ctx,
-                canvas.width,
-                canvas.height,
-                imageObject,
-                {
-                  type: Array.isArray(background) ? 'freeform' : 'gradient',
-                  color: background,
-                  image: backgroundImage,
-                  customImage: customBackgroundImage,
-                  opacity: backgroundOpacity,
-                  cornerRadius: backgroundCornerRadius,
-                },
-                {
-                  cornerRadius: imageCornerRadius,
-                  offsetX: horizontalOffset,
-                  offsetY: verticalOffset,
-                  padding: imagePadding,
-                },
-                {
-                  color: shadowColor,
-                  opacity: shadowOpacity,
-                  blur: shadowBlur,
-                  distance: shadowDistance,
-                }
-              );
-              resolve();
+      
+      // Force an update of the preview
+      if (imageObject && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          try {
+            await new Promise<void>(resolve => {
+              requestAnimationFrame(async () => {
+                await applyImageEffects(
+                  ctx,
+                  canvas.width,
+                  canvas.height,
+                  imageObject,
+                  {
+                    type: Array.isArray(background) ? 'freeform' : 'gradient',
+                    color: background,
+                    image: backgroundImage,
+                    customImage: customBackgroundImage,
+                    opacity: backgroundOpacity,
+                    cornerRadius: backgroundCornerRadius,
+                  },
+                  {
+                    cornerRadius: imageCornerRadius,
+                    offsetX: horizontalOffset,
+                    offsetY: verticalOffset,
+                    padding: imagePadding,
+                  },
+                  {
+                    color: shadowColor,
+                    opacity: shadowOpacity,
+                    blur: shadowBlur,
+                    distance: shadowDistance,
+                  }
+                );
+                resolve();
+              });
             });
-          });
-        } finally {
-          setIsApplyingBackground(false);
-          setApplyingBackgroundIndex(null);
+          } finally {
+            setIsApplyingBackground(false);
+            setApplyingBackgroundIndex(null);
+          }
         }
       }
-    }
+    }, 0);
   };
 
   const buttonClass = (isActive: boolean) => cn(
@@ -1069,7 +1109,7 @@ export default function Dashboard() {
                   <Label>Padding</Label>
                   <Slider
                     min={0}
-                    max={50}
+                    max={80}
                     step={1}
                     value={[imagePadding]}
                     onValueChange={(value) => setImagePadding(value[0])}
@@ -1131,6 +1171,7 @@ export default function Dashboard() {
                   image={imageObject}
                   containerRef={previewContainerRef}
                   canvasRef={canvasRef}
+                  downloadCanvasRef={downloadCanvasRef}
                   backgroundSettings={{
                     type: backgroundType,
                     color: backgroundColor,
@@ -1153,23 +1194,24 @@ export default function Dashboard() {
                   }}
                   previewSize={previewSize}
                   onDownloadableCanvasReady={handleDownloadableCanvasReady}
+                  originalImageDimensions={originalImageDimensions}
                 />
               ) : (
-                <div {...getRootProps()} className={cn(
-                  'text-center cursor-pointer border-2 border-dashed border-gray-300 rounded-lg p-4 w-full h-full flex items-center justify-center',
-                  'hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1'
-                )}>
-                  <input {...getInputProps()} />
-                  {isDragActive ? (
-                    <p>Drop the image here ...</p>
-                  ) : (
-                    <div>
-                      <p className='mb-2'>Upload or Drag & Drop image here</p>
-                      <Button size="sm" className="md:text-base md:px-4 md:py-2">Select Image</Button>
-                    </div>
-                  )}
-                </div>
-              )}
+              <div {...getRootProps()} className={cn(
+                'text-center cursor-pointer border-2 border-dashed border-gray-300 rounded-lg p-4 w-full h-full flex items-center justify-center',
+                'hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1'
+              )}>
+                <input {...getInputProps()} />
+                {isDragActive ? (
+                  <p>Drop the image here ...</p>
+                ) : (
+                  <div>
+                    <p className='mb-2'>Upload or Drag & Drop image here</p>
+                    <Button size="sm">Select Image</Button>
+                  </div>
+                )}
+              </div>
+            )}
             </div>
           </Card>
           
@@ -1211,6 +1253,8 @@ export default function Dashboard() {
                   image={imageObject}
                   containerRef={previewContainerRef}
                   canvasRef={canvasRef}
+                  downloadCanvasRef={downloadCanvasRef}
+                  originalImageDimensions={originalImageDimensions}
                   backgroundSettings={{
                     type: backgroundType,
                     color: backgroundColor,
@@ -1399,7 +1443,7 @@ export default function Dashboard() {
                     <Label>Padding</Label>
                     <Slider
                       min={0}
-                      max={50}
+                      max={80}
                       step={1}
                       value={[imagePadding]}
                       onValueChange={(value) => setImagePadding(value[0])}
