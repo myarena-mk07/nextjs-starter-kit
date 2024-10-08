@@ -7,6 +7,9 @@ import { GeistSans } from 'geist/font/sans'
 import type { Metadata } from 'next'
 import './globals.css'
 import RandomGradientBackground from '@/components/RandomGradientBackground'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://shotbeautifier.com/"),
@@ -24,7 +27,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+      </head>
+      <body className={`${inter.className} min-h-screen bg-background font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
