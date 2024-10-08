@@ -255,140 +255,39 @@
 
 // export default VideoSection;
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play } from 'lucide-react';
 
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
+const VideoSection = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoSrc = "https://res.cloudinary.com/dmwocnj1q/video/upload/v1728395953/ptu1b3moape4qh2qfit1.mp4";
 
-const VideoSection: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [scrollPercentage, setScrollPercentage] = useState(0);
-  const [player, setPlayer] = useState<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<HTMLDivElement>(null);
-
-  const videoId = "xiql2_QTUVc"; // Your YouTube video ID
-  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-
-  useEffect(() => {
-    const loadYouTubeAPI = () => {
-      if (!window.YT) {
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-      }
-    };
-
-    loadYouTubeAPI();
-  }, []);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (containerRef.current) {
-        const { top, height } = containerRef.current.getBoundingClientRect();
-        const windowHeight = window.innerHeight;
-        const scrollPercentage = Math.max(0, Math.min(1, 1 - (top - windowHeight/2) / (height + windowHeight/2)));
-        setScrollPercentage(scrollPercentage);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const initializeYouTubePlayer = () => {
-    if (window.YT && playerRef.current) {
-      new window.YT.Player(playerRef.current, {
-        videoId: videoId,
-        playerVars: {
-          autoplay: 1,
-          controls: 1,
-          modestbranding: 1,
-          rel: 0,
-          showinfo: 0,
-        },
-        events: {
-          onReady: (event: any) => {
-            setPlayer(event.target);
-            event.target.playVideo();
-          },
-        },
-      });
-    } else {
-      console.error("YouTube API not loaded or player element not found");
-    }
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
   };
-
-  const openModal = () => {
-    setIsModalOpen(true);
-    // Delay the initialization slightly to ensure the modal is rendered
-    setTimeout(initializeYouTubePlayer, 100);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    if (player && player.destroy) {
-      player.destroy();
-    }
-    setPlayer(null);
-  };
-
-  const tiltAngle = 25 * (1 - scrollPercentage);
-  const scale = 0.95 + (scrollPercentage * 0.05);
 
   return (
-    <>
-      <div 
-        ref={containerRef}
-        className="relative w-[90vw] h-[25vh] sm:w-[60vw] sm:h-[25vh] md:w-[60vw] md:h-[50vh] lg:w-[70vw] lg:h-[70vh] overflow-hidden py-4 px-4 md:px-8 lg:px-16 group transition-all duration-300 ease-in-out hover:-translate-y-2"
-        style={{
-          transform: `perspective(1000px) rotateX(${tiltAngle}deg) scale(${scale})`,
-          transition: 'transform 0.3s ease-out, translate 0.3s ease-out',
-        }}
+    <div className="relative w-full max-w-3xl mx-auto aspect-video">
+      <video
+        src={videoSrc}
+        className="w-full h-full object-cover"
+        playsInline
+        controls={isPlaying}
+        autoPlay={isPlaying}
       >
+        Your browser does not support the video tag.
+      </video>
+      {!isPlaying && (
         <div 
-          className="w-full h-full rounded-lg overflow-hidden transition-all duration-300 relative cursor-pointer"
-          onClick={openModal}
-          style={{
-            boxShadow: `
-              0 0 10px rgba(198, 255, 177, 0.3),
-              0 0 20px rgba(180, 238, 245, 0.2)
-            `,
-          }}
+          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 cursor-pointer"
+          onClick={handlePlayPause}
         >
-          <div className="absolute inset-0 bg-gradient-to-t from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
-          
-          <img src={thumbnailUrl} alt="Video thumbnail" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="w-20 h-20 flex items-center justify-center bg-red-600 rounded-full hover:bg-red-700 transition-all duration-300">
-              <Play size={40} className="text-white" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="relative w-[90vw] h-[50vh] md:w-[80vw] md:h-[70vh] bg-black">
-            <button 
-              onClick={closeModal}
-              className="absolute top-[-40px] right-0 text-white text-xl p-2"
-            >
-              <X size={24} />
-            </button>
-            <div ref={playerRef} className="w-full h-full"></div>
+          <div className="w-16 h-16 flex items-center justify-center bg-red-600 rounded-full hover:bg-red-700 transition-all duration-300">
+            <Play size={32} className="text-white" />
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

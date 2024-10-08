@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['i.ibb.co', 'img.youtube.com', 'www.youtube.com'],
+    domains: ['i.ibb.co', 'res.cloudinary.com'],
     remotePatterns: [{
       protocol: 'https',
       hostname: 'images.unsplash.com',
@@ -29,25 +29,21 @@ const nextConfig = {
       pathname: '/**'
     }]
   },
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: `
-              default-src 'self';
-              script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com;
-              frame-src https://www.youtube.com;
-              style-src 'self' 'unsafe-inline';
-              img-src 'self' https://i.ytimg.com https://img.youtube.com data:;
-              connect-src 'self' https://www.youtube.com;
-            `.replace(/\s{2,}/g, ' ').trim()
-          }
-        ]
-      }
-    ]
-  }
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.(mov|mp4)$/i,
+      use: [
+        {
+          loader: 'file-loader',
+          options: {
+            publicPath: '/_next',
+            name: 'static/media/[name].[hash].[ext]',
+          },
+        },
+      ],
+    });
+    return config;
+  },
 };
+
 module.exports = nextConfig;
