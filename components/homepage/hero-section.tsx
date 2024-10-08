@@ -31,10 +31,10 @@ export default function HeroSection() {
             {/* Content */}
             <div className="relative z-10 text-center px-4">
                 <h1 className={`${TITLE_TAILWIND_CLASS} text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-center max-w-[1120px] bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent`}>
-                    Nextjs Starter Kit: Build & Ship Fast
+                    Shot Beautifier
                 </h1>
                 <p className="mx-auto max-w-[700px] text-xl md:text-2xl text-gray-300 text-center mt-6">
-                    The Ultimate Nextjs 14 Starter Kit for quickly building your SaaS, giving you time to focus on what really matters
+                    Make Screenshot stand out with Dynamic Effects in Seconds!
                 </p>
                 <div className="mt-8 flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
                     <Link href="/dashboard">
