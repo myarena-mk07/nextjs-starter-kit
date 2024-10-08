@@ -256,7 +256,7 @@
 // export default VideoSection;
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const VideoSection = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -319,9 +319,25 @@ const VideoSection = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
           <img src={thumbnailSrc} alt="Video thumbnail" className="w-full h-full object-cover" />
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="w-20 h-20 flex items-center justify-center bg-red-600 rounded-full hover:bg-red-700 transition-all duration-300">
-              <Play size={40} className="text-white" />
-            </div>
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 80 80"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="transition-transform duration-300 transform hover:scale-110"
+            >
+              <path
+                d="M60 40L30 60L30 20L60 40Z"
+                fill="url(#play-button-gradient)"
+              />
+              <defs>
+                <linearGradient id="play-button-gradient" x1="30" y1="20" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#c6ffb1" />
+                  <stop offset="1" stopColor="#b4eef5" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
         </div>
       </div>
