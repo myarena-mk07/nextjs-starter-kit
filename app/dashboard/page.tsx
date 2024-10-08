@@ -434,7 +434,7 @@ const BackgroundSelector = ({ type, color, image, customImage, onTypeChange, onC
           onSelectBackground={handleSelectBackground}
           isApplying={isApplying}
           applyingIndex={applyingIndex}
-          
+
           isInitialOrReset={isInitialOrReset}
         />
       </div>
@@ -562,20 +562,20 @@ export default function Dashboard() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [customBackgroundImage, setCustomBackgroundImage] = useState<string | null>(null);
   const [suggestedImages, setSuggestedImages] = useState<string[]>([
-    'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
+    'https://i.ibb.co/XCtTgwz/2148811535.jpg',
+    'https://i.ibb.co/BtZ9nJR/2147798286.jpg',
     'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
     'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f',
-    'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1',
-    'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
-    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
-    'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f',
-    'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1',
-    'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
-    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
-    'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f',
-    'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1',
-    'https://images.unsplash.com/photo-1502082553048-f009c37129b9',
-    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429',
+    'https://i.ibb.co/n7MtKcZ/8262.jpg',
+    'https://i.ibb.co/tZn87JK/14640.jpg',
+    'https://i.ibb.co/VHSXxjk/139814.jpg',
+    'https://i.ibb.co/f0v9kQ3/2148092411.jpg',
+    'https://i.ibb.co/n3hNq08/2148187898.jpg',
+    'https://i.ibb.co/R0g1LPt/2148205095.jpg',
+    'https://i.ibb.co/J2Cp7tg/2148290182.jpg',
+    'https://i.ibb.co/grVDbz4/2148290206.jpg',
+    'https://i.ibb.co/fXDK3h7/2148811507.jpg',
+    'https://i.ibb.co/XxMS5H8/black-prism-concept-ai-generated.jpg',
   ]);
 
   const [isOriginalImageUploaded, setIsOriginalImageUploaded] = useState(false);
