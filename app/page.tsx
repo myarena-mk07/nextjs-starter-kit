@@ -736,6 +736,8 @@ import { motion, useAnimation, useInView, AnimatePresence } from 'framer-motion'
 import { Camera, ArrowRight, Check, ChevronDown, Facebook, Twitter, Instagram, Palette, Sliders, Shield, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import styles from './page.module.css'
 import VideoSection from './VideoSection';
+import Footer from './Footer';
+
 
 interface FAQItem {
   question: string;
@@ -1312,7 +1314,7 @@ export default function LandingPage() {
         <FAQSection />
       </section>
 
-      <footer className={`${styles.footer} py-8 md:py-12`}>
+      {/* <footer className={`${styles.footer} py-8 md:py-12`}>
         <div className={`${styles.footerContent} container mx-auto px-4 flex flex-col md:flex-row justify-between`}>
           <div className={`${styles.footerBrand} mb-8 md:mb-0`}>
           <Link href="/" className={styles.logoContainer}>
@@ -1361,7 +1363,9 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-      </footer>
+      </footer> */}
+
+      <Footer />
     </div>
   )
 }

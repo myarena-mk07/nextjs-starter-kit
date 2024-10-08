@@ -109,3 +109,10 @@
 .popover-content {
   @apply bg-background text-foreground border border-border shadow-md rounded-md;
 }
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+
+.style-text-stroke {
+  -webkit-text-stroke: 2px;
+  -webkit-text-fill-color: transparent;
+  paint-order: stroke fill;
+}
