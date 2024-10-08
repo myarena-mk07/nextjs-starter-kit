@@ -256,17 +256,37 @@
 // export default VideoSection;
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, X } from 'lucide-react';
+import { Play, X } from 'lucide-react';
+
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
 
 const VideoSection: React.FC = () => {
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [scrollPercentage, setScrollPercentage] = useState(0);
+  const [player, setPlayer] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
 
-  const videoSrc = "https://res.cloudinary.com/dmwocnj1q/video/upload/v1728393517/p3ij0neaxueueq4jla7v.mov";
-  const thumbnailSrc = "https://res.cloudinary.com/dmwocnj1q/video/upload/v1728393517/p3ij0neaxueueq4jla7v.jpg";
+  const videoId = "xiql2_QTUVc"; // Your YouTube video ID
+  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+
+  useEffect(() => {
+    const loadYouTubeAPI = () => {
+      if (!window.YT) {
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      }
+    };
+
+    loadYouTubeAPI();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -283,31 +303,41 @@ const VideoSection: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
+  const initializeYouTubePlayer = () => {
+    if (window.YT && playerRef.current) {
+      new window.YT.Player(playerRef.current, {
+        videoId: videoId,
+        playerVars: {
+          autoplay: 1,
+          controls: 1,
+          modestbranding: 1,
+          rel: 0,
+          showinfo: 0,
+        },
+        events: {
+          onReady: (event: any) => {
+            setPlayer(event.target);
+            event.target.playVideo();
+          },
+        },
+      });
+    } else {
+      console.error("YouTube API not loaded or player element not found");
     }
   };
 
   const openModal = () => {
     setIsModalOpen(true);
-    if (videoRef.current) {
-      videoRef.current.play();
-      setIsPlaying(true);
-    }
+    // Delay the initialization slightly to ensure the modal is rendered
+    setTimeout(initializeYouTubePlayer, 100);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    if (videoRef.current) {
-      videoRef.current.pause();
-      setIsPlaying(false);
+    if (player && player.destroy) {
+      player.destroy();
     }
+    setPlayer(null);
   };
 
   const tiltAngle = 25 * (1 - scrollPercentage);
@@ -336,7 +366,7 @@ const VideoSection: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
           
-          <img src={thumbnailSrc} alt="Video thumbnail" className="w-full h-full object-cover" />
+          <img src={thumbnailUrl} alt="Video thumbnail" className="w-full h-full object-cover" />
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
             <div className="w-20 h-20 flex items-center justify-center bg-red-600 rounded-full hover:bg-red-700 transition-all duration-300">
               <Play size={40} className="text-white" />
@@ -354,21 +384,7 @@ const VideoSection: React.FC = () => {
             >
               <X size={24} />
             </button>
-            <video
-              ref={videoRef}
-              className="w-full h-full"
-              src={videoSrc}
-              poster={thumbnailSrc}
-              controls
-            >
-              Your browser does not support the video tag.
-            </video>
-            <button
-              onClick={togglePlay}
-              className="absolute bottom-4 left-4 w-12 h-12 flex items-center justify-center bg-red-600 rounded-full hover:bg-red-700 transition-all duration-300"
-            >
-              {isPlaying ? <Pause size={24} className="text-white" /> : <Play size={24} className="text-white" />}
-            </button>
+            <div ref={playerRef} className="w-full h-full"></div>
           </div>
         </div>
       )}
