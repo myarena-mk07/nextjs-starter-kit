@@ -835,7 +835,7 @@ const PricingCard: React.FC<PricingCardProps> = ({ title, description }) => (
     whileHover={{ scale: 1.05 }}
     className="flex flex-col p-4 md:p-6 space-y-4 md:space-y-6 bg-gradient-to-br from-[#0c0c0c] to-[#000000] rounded-xl shadow-xl border-0.5 border-[#c6ffb1] overflow-hidden"
   >
-    <h2 className="text-xl md:text-2xl font-bold text-[#b4eef5]">
+    <h2 className="text-xl md:text-2xl font-bold text-[#c6ffb1] opacity-80 hover:opacity-100">
       {title}
     </h2>
     <p className="text-sm md:text-base text-white">{description}</p>
@@ -867,7 +867,7 @@ function PricingSection() {
           />
         </div>
         <div className="mt-8 md:mt-16 text-center">
-          <p className="text-lg md:text-xl text-[#b4eef5]">Still not convinced? Neither are we!</p>
+          <p className="text-lg md:text-xl text-[#c6ffb1] opacity-90">Still not convinced? Neither are we!</p>
           <motion.button onClick={() => window.location.href = "/dashboard"} 
             whileHover={{ scale: 1.1, rotate: [0, -5, 5, -5, 5, 0] }}
             transition={{ duration: 0.5 }}
@@ -1283,7 +1283,7 @@ export default function LandingPage() {
         <VideoSection />
       </section>
 
-      <section className={`${styles.trustedBrands} py-8 md:py-12`}>
+      {/* <section className={`${styles.trustedBrands} py-8 md:py-12`}>
         <h2 className={`${styles.sectionTitle} text-2xl md:text-3xl mb-6 md:mb-8`}>Trusted by brands you know</h2>
         <div className={styles.carouselContainer}>
           <div className={styles.carousel}>
@@ -1294,7 +1294,7 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       <section id="benefits" className="py-12 md:py-16 bg-black text-white relative overflow-hidden">
         <BenefitsSection />
