@@ -180,20 +180,98 @@
 
 // export default VideoSection;
 
+// import React, { useState } from 'react';
+// import { Play } from 'lucide-react';
+
+// const VideoSection: React.FC = () => {
+//   const [isHovered, setIsHovered] = useState(false);
+//   const [scrollPercentage, setScrollPercentage] = useState(0);
+
+//   const videoId = "xiql2_QTUVc"; // Your YouTube video ID
+//   const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+//   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+//   // Scroll effect (you may need to adjust this based on your specific requirements)
+//   React.useEffect(() => {
+//     const handleScroll = () => {
+//       const scrollTop = window.scrollY;
+//       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+//       const scrollPercent = scrollTop / docHeight;
+//       setScrollPercentage(scrollPercent);
+//     };
+
+//     window.addEventListener('scroll', handleScroll);
+//     return () => window.removeEventListener('scroll', handleScroll);
+//   }, []);
+
+//   const tiltAngle = 25 * (1 - scrollPercentage);
+//   const scale = 0.95 + (scrollPercentage * 0.05);
+
+//   return (
+//     <div 
+//       className="relative w-[90vw] h-[25vh] sm:w-[60vw] sm:h-[25vh] md:w-[60vw] md:h-[50vh] lg:w-[70vw] lg:h-[70vh] overflow-hidden py-4 px-4 md:px-8 lg:px-16 group transition-all duration-300 ease-in-out hover:-translate-y-2"
+//       style={{
+//         transform: `perspective(1000px) rotateX(${tiltAngle}deg) scale(${scale})`,
+//         transition: 'transform 0.3s ease-out, translate 0.3s ease-out',
+//       }}
+//     >
+//       <div 
+//         className="w-full h-full rounded-lg overflow-hidden transition-all duration-300 relative"
+//         style={{
+//           boxShadow: `
+//             0 0 10px rgba(198, 255, 177, 0.3),
+//             0 0 20px rgba(180, 238, 245, 0.2)
+//           `,
+//         }}
+//         onMouseEnter={() => setIsHovered(true)}
+//         onMouseLeave={() => setIsHovered(false)}
+//       >
+//         {/* Gradient overlays */}
+//         <div className="absolute inset-0 bg-gradient-to-t from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
+//         <div className="absolute inset-0 bg-gradient-to-r from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
+        
+//         {/* YouTube thumbnail and play button */}
+//         <div className="relative w-full h-full">
+//           <img 
+//             src={thumbnailUrl} 
+//             alt="Video thumbnail" 
+//             className="w-full h-full object-cover"
+//           />
+//           <a
+//             href={videoUrl}
+//             target="_blank"
+//             rel="noopener noreferrer"
+//             className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 group-hover:bg-opacity-50 transition-all duration-300"
+//           >
+//             <div className={`w-20 h-20 flex items-center justify-center bg-red-600 rounded-full transition-all duration-300 ${isHovered ? 'scale-110' : 'scale-100'}`}>
+//               <Play size={40} color="white" />
+//             </div>
+//           </a>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default VideoSection;
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, X } from 'lucide-react';
 
 const VideoSection: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [scrollPercentage, setScrollPercentage] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const sectionRef = useRef<HTMLDivElement>(null);
+
+  const videoSrc = "https://res.cloudinary.com/dmwocnj1q/video/upload/v1728393517/p3ij0neaxueueq4jla7v.mov";
+  const thumbnailSrc = "https://res.cloudinary.com/dmwocnj1q/video/upload/v1728393517/p3ij0neaxueueq4jla7v.jpg";
 
   useEffect(() => {
     const handleScroll = () => {
-      if (sectionRef.current) {
-        const { top, height } = sectionRef.current.getBoundingClientRect();
+      if (containerRef.current) {
+        const { top, height } = containerRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
         const scrollPercentage = Math.max(0, Math.min(1, 1 - (top - windowHeight/2) / (height + windowHeight/2)));
         setScrollPercentage(scrollPercentage);
@@ -210,90 +288,91 @@ const VideoSection: React.FC = () => {
       if (isPlaying) {
         videoRef.current.pause();
       } else {
-        const playPromise = videoRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.then(_ => {
-            // Playback started successfully
-            setIsPlaying(true);
-          }).catch(error => {
-            // Auto-play was prevented
-            setError("Playback was prevented. Please try again.");
-            console.error("Playback error:", error);
-          });
-        }
+        videoRef.current.play();
       }
       setIsPlaying(!isPlaying);
     }
   };
 
-  const handleVideoEnd = () => {
-    setIsPlaying(false);
+  const openModal = () => {
+    setIsModalOpen(true);
+    if (videoRef.current) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
   };
 
-  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.error("Video error:", e);
-    setError("An error occurred while loading the video. Please try again.");
+  const closeModal = () => {
+    setIsModalOpen(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
   };
 
   const tiltAngle = 25 * (1 - scrollPercentage);
   const scale = 0.95 + (scrollPercentage * 0.05);
 
   return (
-    <div 
-      ref={sectionRef}
-      className="relative w-[90vw] h-[25vh] sm:w-[60vw] sm:h-[25vh] md:w-[60vw] md:h-[50vh] lg:w-[70vw] lg:h-[70vh] overflow-hidden py-4 px-4 md:px-8 lg:px-16 group transition-all duration-300 ease-in-out hover:-translate-y-2"
-      style={{
-        transform: `perspective(1000px) rotateX(${tiltAngle}deg) scale(${scale})`,
-        transition: 'transform 0.3s ease-out, translate 0.3s ease-out',
-      }}
-    >
+    <>
       <div 
-        className="w-full h-full rounded-lg overflow-hidden transition-all duration-300 relative"
+        ref={containerRef}
+        className="relative w-[90vw] h-[25vh] sm:w-[60vw] sm:h-[25vh] md:w-[60vw] md:h-[50vh] lg:w-[70vw] lg:h-[70vh] overflow-hidden py-4 px-4 md:px-8 lg:px-16 group transition-all duration-300 ease-in-out hover:-translate-y-2"
         style={{
-          boxShadow: `
-            0 0 10px rgba(198, 255, 177, 0.3),
-            0 0 20px rgba(180, 238, 245, 0.2)
-          `,
+          transform: `perspective(1000px) rotateX(${tiltAngle}deg) scale(${scale})`,
+          transition: 'transform 0.3s ease-out, translate 0.3s ease-out',
         }}
       >
-        {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
-        
-        <div className="relative w-full h-full">
-          <video
-            ref={videoRef}
-            className="absolute inset-0 w-full h-full object-cover"
-            onEnded={handleVideoEnd}
-            onError={handleVideoError}
-          >
-            <source src="/assets/Video/demo.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-          {!isPlaying && (
-            <img
-              src="https://i.ibb.co/qW28cnN/Screenshot-2024-10-07-at-12-49-10-PM.png"
-              alt="Preview"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          )}
-          <button
-            onClick={togglePlay}
-            className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 transition-opacity duration-300 group-hover:bg-opacity-50"
-            style={{ display: isPlaying ? 'none' : 'flex' }}
-          >
-            <div className="w-20 h-20 flex items-center justify-center">
-              <Play size={60} className="text-[#c6ffb1]" />
+        <div 
+          className="w-full h-full rounded-lg overflow-hidden transition-all duration-300 relative cursor-pointer"
+          onClick={openModal}
+          style={{
+            boxShadow: `
+              0 0 10px rgba(198, 255, 177, 0.3),
+              0 0 20px rgba(180, 238, 245, 0.2)
+            `,
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#c6ffb1] via-transparent to-[#c6ffb1] opacity-5 group-hover:opacity-10 transition-opacity duration-300"></div>
+          
+          <img src={thumbnailSrc} alt="Video thumbnail" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="w-20 h-20 flex items-center justify-center bg-red-600 rounded-full hover:bg-red-700 transition-all duration-300">
+              <Play size={40} className="text-white" />
             </div>
-          </button>
-          {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70">
-              <p className="text-white text-center">{error}</p>
-            </div>
-          )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="relative w-[90vw] h-[50vh] md:w-[80vw] md:h-[70vh] bg-black">
+            <button 
+              onClick={closeModal}
+              className="absolute top-[-40px] right-0 text-white text-xl p-2"
+            >
+              <X size={24} />
+            </button>
+            <video
+              ref={videoRef}
+              className="w-full h-full"
+              src={videoSrc}
+              poster={thumbnailSrc}
+              controls
+            >
+              Your browser does not support the video tag.
+            </video>
+            <button
+              onClick={togglePlay}
+              className="absolute bottom-4 left-4 w-12 h-12 flex items-center justify-center bg-red-600 rounded-full hover:bg-red-700 transition-all duration-300"
+            >
+              {isPlaying ? <Pause size={24} className="text-white" /> : <Play size={24} className="text-white" />}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
