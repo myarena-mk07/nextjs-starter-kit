@@ -11,6 +11,9 @@ import { Inter } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'] })
 
+import { GoogleAnalytics } from '@next/third-parties/google'
+
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://shotbeautifier.com/"),
   title: {
@@ -29,6 +32,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        <GoogleAnalytics gaId="G-DMW4HBE3JH" />
       </head>
       <body className={`${inter.className} min-h-screen bg-background font-sans antialiased`}>
         <ThemeProvider
